@@ -1,0 +1,288 @@
+`default_nettype none
+`define CWS_TYPE_SIMPLE 0
+`define CWS_TYPE_PRIMITIVE 1
+`define CWS_TYPE_PIPELINED 2
+
+module counter_with_strobe
+    #( 
+        `ifdef FORMAL
+            parameter WIDTH = 4,
+            parameter ALU_WIDTH = 2,
+        `else
+            parameter WIDTH = 15,
+           parameter ALU_WIDTH = 4,
+        `endif
+
+        parameter TYPE = 2
+    )
+    (
+        input   wire                rst,
+        input   wire                clk,
+        input   wire                enable,
+        input   wire [WIDTH-1:0]    reset_value,
+        output  wire                strobe,
+        output  wire                valid
+    );
+    generate
+        case (TYPE)
+        `CWS_TYPE_SIMPLE: begin
+            assign valid = 1'b1;
+            reg     [WIDTH-1:0]    counter_ff     = 'd1;
+            reg                    strobe_ff   = 0;
+            assign                 strobe      = strobe_ff;
+
+            always @( posedge clk ) begin
+                if( rst ) begin
+                    counter_ff <= 'd1;
+                end else begin 
+                    if( enable ) begin
+                        counter_ff     <= counter_ff + 'd1;
+                        if( counter_ff >= reset_value ) begin
+                            counter_ff <= 'd1;
+                            strobe_ff <= 1'b1;
+                        end
+                    end
+                end // !rst
+                if( strobe_ff )
+                    strobe_ff <= 1'b0;
+            end // always
+        end
+
+        `CWS_TYPE_PRIMITIVE: begin
+            assign valid = 1'b1;
+            wire [WIDTH-1:0] counter_ff_d, counter_ff_q;
+            wire counter_ff_cmp_cout;
+            ff_dffre strobe_ff( .D(counter_ff_cmp_cout), .CLK(clk),.RESET(strobe || rst),.CE(enable),.Q(strobe));
+            genvar idx;
+            for( idx = 0; idx < WIDTH; idx = idx + 1 ) begin :cws_loop
+                ff_dffre #(.INIT((idx==0)?1'b1:1'b0)) 
+                    counter_ff( 
+                        .D(     counter_ff_d[idx] ), 
+                        .CLK(   clk ),
+                        .RESET( (enable && counter_ff_cmp_cout) || rst ),
+                        .CE(    enable ),
+                        .Q(     counter_ff_q[idx] ) 
+                    );
+            end
+            ALU_CHAIN #(.WIDTH(WIDTH), .TYPE(`ALU_TYPE_COUNTUP))    
+                counter_alu(    .I0(counter_ff_q),
+                                .I1(0),
+                                .I3(1'b0), 
+                                .CIN(1'b1), 
+                                .COUT(), 
+                                .SUM(counter_ff_d) );
+
+            ALU_CHAIN #(.WIDTH(WIDTH), .TYPE(`ALU_TYPE_GREATER_EQ)) 
+                counter_cmp_0(  .I0(counter_ff_q), 
+                                .I1(reset_value), 
+                                .I3(1'b0), 
+                                .CIN(1'b1), 
+                                .COUT(counter_ff_cmp_cout),  
+                                .SUM() );
+        end
+
+        `CWS_TYPE_PIPELINED: begin
+            // the 'reg [WIDTH-1:0] counter;' will be broken into chunks.
+            // each chunk's arithmetic COUT will be stored in the reg carrie_chain[] for the next chunks CIN.
+            // the first chunk will not have a CIN, but the enable signal
+            // the last chunk will not have a COUT
+            // the counter may contain only one chunk.
+            localparam CHUNK_COUNT      = WIDTH % ALU_WIDTH == 0         // find the minimum amount of chunks needed to contain the full counter
+                                                ? WIDTH / ALU_WIDTH
+                                                : WIDTH / ALU_WIDTH + 1;
+            localparam LAST_CHUNK_SIZE  = WIDTH % ALU_WIDTH == 0         // find the size of the last chunk needed to contain for the counter.
+                                                ? ALU_WIDTH
+                                                : WIDTH % ALU_WIDTH;
+            reg [WIDTH-1:0]         counter_ff = 'd1;
+            reg [CHUNK_COUNT-1:0]   carry_chain = 0;
+            reg [CHUNK_COUNT-1:0]   cmp_chain = 0;
+            reg                     strobe_ff = 0;
+            assign  strobe  = strobe_ff;
+            // used for formal verification
+            reg [CHUNK_COUNT:0] valid_tracker   = 0;
+            assign              valid           = valid_tracker[CHUNK_COUNT];
+            always @( posedge clk ) begin
+                if( rst ) begin
+                    valid_tracker <= 'd1;
+                end else begin
+                    if( enable )
+                        valid_tracker <= 'd1;
+                    else
+                        valid_tracker <= { valid_tracker[CHUNK_COUNT-1:0], 1'b0 };
+                end
+            end
+            reg r_trigger = 0;
+            wire trigger = r_trigger;
+            if( CHUNK_COUNT == 1)
+                always @(posedge clk) r_trigger <= counter_ff >= reset_value;
+            else
+                always @(posedge clk) r_trigger <= &cmp_chain;  // bug here
+
+            
+
+            integer idx;    // for loop iterator ... current_chunk
+            always @( posedge clk ) begin
+                strobe_ff <= 0;   // turn strobe_ff off.
+                if( rst ) begin
+                    counter_ff <= 'd1;
+                    carry_chain <= 0;
+                    cmp_chain <= 0;
+                end else begin
+                    // carry chain propagation,
+                    // exceptions
+                    //  first chunk - .CIN(enable), all others .CIN(carry_chain[idx-1])
+                    //  last_chunk  - .COUT(null)
+                    //  last_chunk  - .WIDTH(LAST_CHUNK_SIZE)
+                    for( idx = 0; idx <= CHUNK_COUNT - 1; idx = idx + 1 ) begin
+                        if( idx != CHUNK_COUNT - 1 ) begin // !LAST_CHUNK
+                            { carry_chain[idx], counter_ff[idx*ALU_WIDTH+:ALU_WIDTH] } <= { 1'b0, counter_ff[idx*ALU_WIDTH+:ALU_WIDTH] } + (idx == 0 ? enable : carry_chain[idx-1]);
+                            cmp_chain[idx] <= counter_ff[idx*ALU_WIDTH+:ALU_WIDTH] >= reset_value[idx*ALU_WIDTH+:ALU_WIDTH];
+                        end else begin    // == LAST_CHUNK
+                            counter_ff[WIDTH-1:WIDTH-LAST_CHUNK_SIZE] <= counter_ff[WIDTH-1:WIDTH-LAST_CHUNK_SIZE] + (idx == 0 ? enable : carry_chain[idx-1]);
+                            cmp_chain[idx] <= counter_ff[WIDTH-1:WIDTH-LAST_CHUNK_SIZE] >= reset_value[WIDTH-1:WIDTH-LAST_CHUNK_SIZE];
+                        end
+                    end 
+                    if( enable ) begin
+                        if( trigger ) begin
+                            counter_ff <= 'd1;
+                            carry_chain <= 0;
+                            strobe_ff <= 1;
+                        end
+                    end
+                end // !rst
+            end 
+        end
+        endcase
+    endgenerate
+/////////////////////////////////////////////
+// Test the counter as a blackbox circuit. //
+/////////////////////////////////////////////
+`ifdef FORMAL
+    `define TEST_BENCH_RUNNING
+`endif 
+
+`ifdef TEST_BENCH_RUNNING
+    // formal verification comparisions values
+    reg             past_valid          = 0;
+    reg             past_valid_1        = 0;
+    //initial assume( past_valid == 0 && past_valid_1 == 0 );
+
+    reg [WIDTH-1:0] tick_counter        = 0;
+    always @( posedge clk ) begin
+        // verifiy $past is valid
+        past_valid   <= 1;
+        past_valid_1 <= past_valid;                    
+
+        // store the current reset_value anytime it is loaded and reset the counter    
+        if( rst || strobe ) begin    
+            tick_counter = 0;   
+        end 
+        if(!rst && enable ) begin
+            // increment the tick counter when 'rst' is HIGH and 'enable' is HIGH
+            tick_counter <= tick_counter + 1'b1;
+        end
+    end
+`endif 
+
+`ifdef FORMAL
+// Assume inputs to pass bmc test
+    // // // //
+    // rst   //
+    // // // //
+        // force the test to start in a reset state
+        // always @( posedge clk )
+        //     if( !past_valid_1 )
+        //         assume( rst );
+
+        // force any reset to last 2 clock cycles
+        // always @( posedge clk ) if( past_valid_1 ) assume( $fell(rst) ? $past(rst,2) : 1);
+    // // // // //
+    // enable   //
+    // // // // //
+        if( TYPE != `CWS_TYPE_PIPELINED ) begin
+            // force 'enable' to be LOW no more than 1 tick. reduces the required depth to pass k-induction
+            // always @( posedge clk ) if( past_valid &&rst ) assume( enable || $past(enable) );
+
+            // force 'enable' to be LOW no more than 2 ticks.
+            always @( posedge clk ) 
+                if( past_valid_1 && !rst ) 
+                    assume( enable || $past(enable) || $past(enable,2) );
+        end else begin
+            // force 'enable' to not violate the pipeline latancy requirement
+            always @( posedge clk ) assume( enable == valid );  // keep enable LOW during !valid
+
+            // force 'reset_value to not violate the pipeline latancy requirment
+            always @( posedge clk ) if( past_valid ) assume( (valid && !enable && $stable(enable)) || $stable(reset_value) );
+        end
+        // force 'enable' to be HIGH
+        //always @( posedge clk ) assume( enable ==rst );
+    // // // // // //
+    // reset_value //
+    // // // // // //
+        // force the 'reset_value' to be greater than 1 but less than sby test 'DEPTH' / 3 b/c of the alternating enable bit
+        always @( posedge clk ) assume( reset_value >= 2 && reset_value <= 15 );
+
+        // force the 'reset_value to stay stable while running
+        // always @( posedge clk ) if( past_valid ) assume( (!rst || !strobe) ? !$changed(reset_value) : 1 );
+
+
+
+// induction testing
+// using a 8 bit counter, need a test depth > 255 with enable forced high, 510 with enable toggling
+///////////////////////////////////
+// Start testing expected behaviors
+    // The strobe can only go high when  ticks >= 'reset_value'
+    // always @( posedge clk ) assert( !past_valid || rst || ( strobe == ( &{tick_counter >= $past(reset_value), $past(enable), valid } ) ) );
+    always @( posedge clk ) assert( !past_valid || rst || !strobe ||( strobe == ( tick_counter >= reset_value ) ) );
+    // The strobe bit will only stays HIGH for 1 clock cycle
+    always @( posedge clk ) assert( !past_valid ||                  // past is invalid
+                                    !strobe     ||                  // strobe is off
+                                    $changed(strobe)                // strobe has changed to HIGH
+                            );
+    always @( posedge clk ) cover( strobe );
+
+`endif
+endmodule
+
+module FORMAL_counter_with_strobe(
+        input   wire                rst,
+        input   wire                clk,
+        input   wire                enable,
+        input   wire [4:0]          reset_value
+    );
+    //`define FULL // test all combonations of width, alu_width, and type
+    `ifdef FULL
+        // parameter WIDTH = 4,
+        // parameter ALU_WIDTH = 2,
+        // parameter TYPE = 2
+        localparam wire_size = (3*4*3)-1;
+        reg [wire_size-1:0] output_wires = 0;
+        //initial assume( output_wires == 0 );
+        generate
+            genvar par_WIDTH, par_ALU_WIDTH, par_TYPE;
+            for( par_WIDTH = 2; par_WIDTH <= 4; par_WIDTH = par_WIDTH + 1 ) begin : width
+                for( par_ALU_WIDTH = 1; par_ALU_WIDTH <= 4; par_ALU_WIDTH = par_ALU_WIDTH + 1 ) begin : alu
+                    for( par_TYPE = 0; par_TYPE <= 2; par_TYPE = par_TYPE + 1 ) begin : type
+                        wire strobe, valid;
+                        counter_with_strobe #( .WIDTH(par_WIDTH), .ALU_WIDTH(par_ALU_WIDTH), .TYPE(par_TYPE) )
+                        UUT( .rst(rst), .clk(clk), .enable(enable), .reset_value(reset_value[par_WIDTH-1:0]), .strobe(strobe), .valid(valid) );
+                        always @( posedge clk ) begin
+                            if( strobe )
+                                output_wires[ ((par_WIDTH-2)*12) + (( par_ALU_WIDTH-1) * 3) + par_TYPE ] <= 1'b1;
+                        end
+                    end
+                end
+            end
+        endgenerate
+        `ifdef FORMAL
+            always @( posedge clk ) cover( output_wires != 0 );
+        `endif
+    `else   // !FULL  test the default parameters
+        wire strobe, valid;
+        counter_with_strobe UUT( .rst(rst), .clk(clk), .enable(enable), .reset_value(reset_value), .strobe(strobe), .valid(valid) );
+        `ifdef FORMAL
+            always @( posedge clk ) cover( strobe );
+        `endif
+    `endif
+
+endmodule
