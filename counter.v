@@ -3,10 +3,10 @@ module counter_with_strobe
     #( 
         `ifdef FORMAL
             parameter WIDTH     = 4,
-            parameter LATENCY   = 2
+            parameter LATENCY   = 4
         `else
             parameter WIDTH     = 32,
-            parameter LATENCY   = 5
+            parameter LATENCY   = 1
         `endif
     )
     (
@@ -15,6 +15,7 @@ module counter_with_strobe
         input   wire                enable,
         input   wire [WIDTH-1:0]    reset_value,
         output  wire                strobe,
+        output  wire                ready,
         output  wire                valid
     );
     // the 'reg [WIDTH-1:0] counter;' will be broken into chunks, the number of which will be based on the LATENCY 
@@ -24,36 +25,14 @@ module counter_with_strobe
     // the counter may contain only one chunk.
 
     integer idx;    // for loop iterator
-
-    // determin the chunk width. knowing that each chunk will take 1 tick, width divided by latency will provide
-    // the needed delay as specified in parameter LATENCY. protect values from base2 rounding errors
-    localparam ALU_WIDTH    = WIDTH / LATENCY * LATENCY == WIDTH ? WIDTH / LATENCY : WIDTH / LATENCY + 1;
-    // find the minimum amount of chunks needed to contain the full counter
-    localparam CHUNK_COUNT  = WIDTH % ALU_WIDTH == 0 ? WIDTH / ALU_WIDTH : WIDTH / ALU_WIDTH + 1;
-    // find the size of the last chunk needed to contain for the counter.
-    localparam LAST_CHUNK_SIZE = WIDTH % ALU_WIDTH == 0 ? ALU_WIDTH : WIDTH % ALU_WIDTH;
-    // Build the counter and carry chain registers
-    reg     [WIDTH-1:0]         counter_ff = 'd1;
-    reg     [CHUNK_COUNT-1:0]   carry_chain = 0;
-
-    // 'valid' used for formal verification
-    reg [CHUNK_COUNT:0] valid_tracker   = 0;
-    assign              valid           = valid_tracker[CHUNK_COUNT];
-    always @( posedge clk ) begin
-        if( rst ) begin
-            valid_tracker <= 'd1;
-        end else begin
-            if( enable )
-                valid_tracker <= 'd1;
-            else begin
-                if( !valid )
-                    valid_tracker <= { valid_tracker[CHUNK_COUNT-1:0], 1'b0 };
-            end
-        end
-    end
+    `ifndef FORMAL
+        `include "toolbox/tail_recursion_iterators.v"
+    `else
+        `include "tail_recursion_iterators.v"
+    `endif
     // 'trigger' comparator construction diagram
     // By using a overlapping slope structure (name not known), the comparators latency can be controlled
-    // in order to produce a valid output, 1 clock after the carry chain has completly propagated 
+    // in order to produce a valid output, 1 clock after the alu's carry chain has completly propagated 
     //  LUT width 2                                 LUT width 3                                 LUT width 4
     //  base #  0___1   2   3   4   5   6   7   8   9   0___1___2   3   4   5   6   7   8   9   0___1___2___3   4   5   6   7   8   9
     //              0___|   |   |   |   |   |   |   |           0___|___|   |   |   |   |   |               0___|___|___|   |   |   |
@@ -66,127 +45,132 @@ module counter_with_strobe
     //                                          7___|
     //                                              trigger
 
-    // Define a few 'tail recursion iterators' to help build the structure seen above
+    // determin the chunk width. knowing that each chunk will take 1 tick, 'width' / 'latency' will provide
+    localparam ALU_WIDTH  = WIDTH / LATENCY * LATENCY == WIDTH ? WIDTH / LATENCY : WIDTH / LATENCY + 1; // the needed delay as specified in parameter LATENCY. protect values from base2 rounding errors
+    localparam CHUNK_COUNT = WIDTH % ALU_WIDTH == 0 ? WIDTH / ALU_WIDTH : WIDTH / ALU_WIDTH + 1; // find the minimum amount of chunks needed to contain the counter
+    localparam LAST_CHUNK_SIZE = WIDTH % ALU_WIDTH == 0 ? ALU_WIDTH : WIDTH % ALU_WIDTH; // find the size of the last chunk needed to contain the counter.
+    localparam CMP_LUT_WIDTH =      f_TailRecursionGetStructureWidthForLatency(CHUNK_COUNT, LATENCY); // use the maxium 'latency' to find the comparators unit width
+    localparam CMP_REG_WIDTH =      f_TailRecursionGetStructureWidth(CHUNK_COUNT, CMP_LUT_WIDTH); // use the comparators width to find how many units are needed
+    localparam CMP_LAST_LUT_WIDTH = f_TailRecursionGetLastStructureWidth(CHUNK_COUNT, CMP_LUT_WIDTH); // find the width of the last unit.
+    initial $display("WIDTH %d\nLATENCY %d\nALU_WIDTH %d\nCHUNK_COUNT %d\nLAST_CHUNK_SIZE %d\nCMP_LUT_WIDTH %d\nCMP_REG_WIDTH %d \nCMP_LAST_LUT_WIDTH:%d"
+        ,WIDTH, LATENCY, ALU_WIDTH, CHUNK_COUNT, LAST_CHUNK_SIZE, CMP_LUT_WIDTH, CMP_REG_WIDTH, CMP_LAST_LUT_WIDTH);
+    // 'Used for formal verification, can be optimized away.
+    // 'ready' used to indicate when enable can be 'HIGH'
+    // 'valid' used to indicate when strobe hay be 'HIGH'
+    reg [CHUNK_COUNT+1:0] ready_tracker   = 0;
+    assign              ready           = ready_tracker[CHUNK_COUNT+1];
+    reg                 strobe_valid    = 0;
+    assign              valid           = strobe_valid;
 
-    // f_GetCmpWidth - Returns the number of LUT needed to build structure
-    //  base        - Total number of input bits to compare
-    //  lut_width   - Maxium width of the LUT used.
-    //  rt          - Set to 0zero when calling this function, used internaly, exposed for recursion propertys
-    //
-    // First Call f_GetCmpWidth(CHUNK_COUNT, LUT_WIDTH, 0 );
-    function automatic [7:0] f_GetCmpWidth;
-        input [7:0] base, lut_width, rt;         
-        f_GetCmpWidth=base==0?rt:f_GetCmpWidth(base-(base>=lut_width?(rt==0?lut_width:lut_width-1):base),lut_width,rt+1);
-    endfunction
-        // initial begin:test_GetCmpWidth integer idx;$display("f_GetCmpWidth()");for(idx=2;idx<=10;idx=idx+1)begin $display("base_width:10 lut_width:%d cmp_width:%d",idx,f_GetCmpWidth(10,idx,0));end end
- 
-    // f_GetLastLutWidth - Returns the total number of inputs for the last LUT of the comparator structure
-    //  base        - Total number of input bits to compare
-    //  lut_width   - Maxium width of LUT used.
-    //  rt          - Set to 0zero when calling this function, used internaly, exposed for recursion propertys
-    //
-    // First Call f_GetLastLutWidth(CHUNK_COUNT, LUT_WIDTH, 0, 0);
-    function automatic [7:0] f_GetLastLutWidth;
-        input [7:0] base, lut_width, rt, results;
-            f_GetLastLutWidth = base == 0 ?results+1:f_GetLastLutWidth(base-(base>=lut_width?(rt==0?lut_width:lut_width-1):base),lut_width,rt+1, (base>=lut_width?(rt==0?lut_width:lut_width-1):base));
-    endfunction
-        // initial begin:test_GetLastLutWidth integer idx; for(idx=2;idx<10;idx=idx+1)$display("\t\t\tf_GetCmpWireCount(.base(10).lut_width(%d)) last_lut_width%d",idx,f_GetLastLutWidth(10, idx, 0, 0));end   
-    // f_GetLutWidthForLatency - Returns the smalles LUT width needed to set the structure's latency to a maxium value.
-    //                           The actual latency will be less than or equal to the request
-    //  base        - Total number of input bits to compare
-    //  latency     - Maxium latency.
-    //  lut_width   - MUST BE greater than to 1one. Minium size LUT to use for the comparator. Exposed for recursion propertys
-    //
-    // First Call f_GetLutWidthForLatency(CHUNK_COUNT, LATENCY, 2);
-    function automatic [7:0] f_GetLutWidthForLatency;
-        input [7:0] base, latency, lut_width;
-        f_GetLutWidthForLatency=(f_GetCmpWidth(base,lut_width,0)<=latency)?lut_width:f_GetLutWidthForLatency(base,latency,lut_width+1);
-    endfunction
-        // initial begin:test_GetLutWidthForLatency integer idx;$display("f_GetLutWidthForLatency()");for(idx=1;idx<=10;idx=idx+1)begin $display("base:10 latency:%d lut_width:%d",idx,f_GetLutWidthForLatency(10,idx,2));end end
-    // f_GetLutInputAddress - Returns the index for the base bit requested.
-    //  cmp_width       - width of the comparator
-    //  lut_width       - width of the lut used in the comparator
-    //  unit_index      - which LUT index is being requested
-    //  input_index     - which input of the LUT is being requested
-    //  base_input_index- Base input address. Exposed for recursion propertys
-    //  past_output_index- Past output address. Exposed for recursion propertys
-    //  current_unit    - current unit_index. Exposed for recursion propertys
-    //
-    //  First Call f_GetLutInputAddress( CHUNK_COUNT, LUT_WIDTH, LUT_NUMBER, INPUT_NUMBER, 0, ~0, 0);
-    function automatic [7:0] f_GetLutInputAddress;
-        input [7:0] cmp_width, lut_width, unit_index, input_index, base_input_index, past_output_index, current_unit;
-            f_GetLutInputAddress = (current_unit==unit_index)?unit_index==0?input_index:input_index==0?past_output_index:(base_input_index-1)+input_index:f_GetLutInputAddress(cmp_width,lut_width,unit_index,input_index,base_input_index==0?base_input_index+lut_width:base_input_index+(lut_width-1),past_output_index+1,current_unit+1);
-    endfunction
-        // initial begin:test_GetLutInputAddress integer unit_index,input_index;$display("f_GetLutInputAddress");$display("Base:10 LUT_WIDTH:4 LUT_COUNT:3");for(unit_index=0;unit_index<3;unit_index=unit_index+1)for( input_index=0;input_index<4;input_index=input_index+1)$display("unit:%d input:%d address:%d",unit_index,input_index,f_GetLutInputAddress(10,4,unit_index,input_index,0,~0,0));end
+    always @( posedge clk ) begin
+        if( rst ) begin
+            ready_tracker <= 'd1;
+            strobe_valid  <= 0;
+        end else begin
+            if( enable ) begin
+                ready_tracker <= 'd1;
+                if( ready )
+                    strobe_valid <= 1'b1;
+            end else begin
+                ready_tracker <= { ready_tracker[CHUNK_COUNT:0], 1'b1 };
+                strobe_valid  <= 0;
+            end
+        end
+    end
 
     wire trigger;
-    localparam CMP_LUT_WIDTH = f_GetLutWidthForLatency(CHUNK_COUNT, LATENCY, 2);
-    localparam CMP_REG_WIDTH = f_GetCmpWidth(CHUNK_COUNT, CMP_LUT_WIDTH, 0 );
-    localparam CMP_LAST_LUT_WIDTH = f_GetLastLutWidth(CHUNK_COUNT, CMP_LUT_WIDTH, 0, 0);
-    initial $display("CMP_LUT_WIDTH %d CMP_REG_WIDTH %d", CMP_LUT_WIDTH, CMP_REG_WIDTH);
-    if( CHUNK_COUNT == 1)
-        assign trigger = counter_ff >= reset_value;
-    else begin
-        reg [CHUNK_COUNT-1:0] comparator_base = 0;
-        always @( posedge clk ) begin
-            if( rst ) begin
-                comparator_base <= 0;
-            end else begin
-                for( idx = 0; idx <= CHUNK_COUNT - 1; idx = idx + 1 ) begin
-                    if( idx != CHUNK_COUNT - 1 ) begin // !LAST_CHUNK
-                        comparator_base[idx] <= counter_ff[idx*ALU_WIDTH+:ALU_WIDTH] >= reset_value[idx*ALU_WIDTH+:ALU_WIDTH];
-                    end else begin    // == LAST_CHUNK
-                        comparator_base[idx] <= counter_ff[idx*ALU_WIDTH+:LAST_CHUNK_SIZE] >= reset_value[idx*ALU_WIDTH+:LAST_CHUNK_SIZE];
+    reg [WIDTH-1:0] counter_ff = 'd1;
+    generate
+        // counter_ff
+        if( LATENCY <= 1 ) begin
+            assign trigger = counter_ff == reset_value;
+            always @( posedge clk ) begin
+                if( rst )
+                    counter_ff <= 'd1;
+                else begin
+                    if( enable ) begin
+                        counter_ff <= counter_ff + 1'b1;
+                        if( trigger )
+                            counter_ff <= 'd1;
                     end
                 end
             end
-        end
-        reg [CMP_REG_WIDTH-1:0] comparator_structure = 0;
-        integer unit_index;
-        always @( posedge clk ) begin
-            if( rst ) begin
-                comparator_structure <= 0;
-            end else begin
-                for( unit_index = 0; unit_index < CMP_REG_WIDTH; unit_index = unit_index + 1) begin
-                        comparator_structure[unit_index] <= unit_index==0
-                                                            ? &comparator_base[0+:CMP_LUT_WIDTH]
-                                                            : unit_index != CMP_REG_WIDTH - 1
-                                                                ? &{comparator_structure[unit_index-1], comparator_base[((unit_index-1)*(CMP_LUT_WIDTH-1)+CMP_LUT_WIDTH) +: CMP_LUT_WIDTH-1]}
-                                                                : &{comparator_structure[unit_index-1], comparator_base[((unit_index-1)*(CMP_LUT_WIDTH-1)+CMP_LUT_WIDTH) +: CMP_LAST_LUT_WIDTH-1]};
+        end else begin
+            // counter_ff and carry chain
+            reg     [CHUNK_COUNT-1:0]   carry_chain = 0;
+            always @( posedge clk ) begin
+                if( rst ) begin
+                    counter_ff <= 'd1;
+                    carry_chain <= 0;
+                end else begin
+                    for( idx = 0; idx <= CHUNK_COUNT - 1; idx = idx + 1 ) begin
+                        if( idx != CHUNK_COUNT - 1 ) begin // !LAST_CHUNK
+                            { carry_chain[idx], counter_ff[idx*ALU_WIDTH+:ALU_WIDTH] } <= { 1'b0, counter_ff[idx*ALU_WIDTH+:ALU_WIDTH] } + (idx == 0 ? enable : carry_chain[idx-1]);
+                        end else begin    // == LAST_CHUNK
+                            counter_ff[WIDTH-1:WIDTH-LAST_CHUNK_SIZE] <= counter_ff[WIDTH-1:WIDTH-LAST_CHUNK_SIZE] + (idx == 0 ? enable : carry_chain[idx-1]);
+                        end
+                    end 
+                    if( enable ) begin
+                        if( trigger ) begin
+                            counter_ff <= 'd1;
+                            carry_chain <= 0;
+                        end
+                    end
+                end // !rst
+            end 
+
+            reg [CHUNK_COUNT+CMP_REG_WIDTH-1:0] comparator = 0;
+            assign trigger = comparator[CHUNK_COUNT+CMP_REG_WIDTH-1];
+
+            // take sections of the counter_ff and perform the operation on them.
+            // then store the result in a register for each section.
+            always @( posedge clk ) begin
+                if( rst ) begin
+                    comparator[0+:CHUNK_COUNT] <= 0;
+                end else begin
+                    for( idx = 0; idx <= CHUNK_COUNT - 1; idx = idx + 1 ) begin
+                        if( idx != CHUNK_COUNT - 1 ) begin // !LAST_CHUNK
+                            comparator[idx] <= counter_ff[idx*ALU_WIDTH+:ALU_WIDTH] == reset_value[idx*ALU_WIDTH+:ALU_WIDTH];
+                        end else begin    // == LAST_CHUNK
+                            comparator[idx] <= counter_ff[idx*ALU_WIDTH+:LAST_CHUNK_SIZE] == reset_value[idx*ALU_WIDTH+:LAST_CHUNK_SIZE];
+                        end
+                    end
+                end
+            end
+            genvar unit_index, input_index;
+            // the last unit may be a different size than the others. account for this here
+            `define input_size  unit_index != (CMP_REG_WIDTH-1)?CMP_LUT_WIDTH-1:CMP_LAST_LUT_WIDTH-1
+            // loop through each unit and assign the in and outs
+            for( unit_index = 0; unit_index < CMP_REG_WIDTH; unit_index = unit_index + 1) begin
+                initial $display("input_size: %d", `input_size);
+                // make the input wires for this unit   
+                wire [`input_size:0] unit_inputs;
+                // assign the inputs to their proper place
+                for( input_index = `input_size; input_index != ~0; input_index = input_index-1 ) begin
+                    initial $display("unit_index: %d input_index:%d func:%d", unit_index, input_index, f_TailRecursionGetStructureInputAddress(CHUNK_COUNT, CMP_LUT_WIDTH, unit_index, input_index));
+                    assign unit_inputs[input_index] = 
+                    comparator[f_TailRecursionGetStructureInputAddress(CHUNK_COUNT, CMP_LUT_WIDTH, unit_index, input_index)];
+                end
+                // perform the function and store the output
+                always @( posedge clk ) begin
+                    if( rst )
+                        comparator[CHUNK_COUNT+unit_index] <= 0;
+                    else
+                        comparator[CHUNK_COUNT+unit_index] <= &unit_inputs;
                 end
             end
         end
-        assign trigger = comparator_structure[CMP_REG_WIDTH-1];
-    end                                                                     
+    endgenerate
 
     reg     strobe_ff = 0;
     assign  strobe  = strobe_ff;
     always @( posedge clk ) begin
         strobe_ff <= 0;   // turn strobe_ff off.
-        if( rst ) begin
-            counter_ff <= 'd1;
-            carry_chain <= 0;
-        end else begin
-            // carry chain propagation,
-            // exceptions
-            //  first chunk - .CIN(enable), all others .CIN(carry_chain[idx-1])
-            //  last_chunk  - .COUT(null)
-            //  last_chunk  - .WIDTH(LAST_CHUNK_SIZE)
-            for( idx = 0; idx <= CHUNK_COUNT - 1; idx = idx + 1 ) begin
-                if( idx != CHUNK_COUNT - 1 ) begin // !LAST_CHUNK
-                    { carry_chain[idx], counter_ff[idx*ALU_WIDTH+:ALU_WIDTH] } <= { 1'b0, counter_ff[idx*ALU_WIDTH+:ALU_WIDTH] } + (idx == 0 ? enable : carry_chain[idx-1]);
-                end else begin    // == LAST_CHUNK
-                    counter_ff[WIDTH-1:WIDTH-LAST_CHUNK_SIZE] <= counter_ff[WIDTH-1:WIDTH-LAST_CHUNK_SIZE] + (idx == 0 ? enable : carry_chain[idx-1]);
-                end
-            end 
-            if( enable ) begin
-                if( trigger ) begin
-                    counter_ff <= 'd1;
-                    carry_chain <= 0;
-                    strobe_ff <= 1;
-                end
+        if( enable ) begin
+            if( trigger ) begin
+                strobe_ff <= 1;
             end
-        end // !rst
+        end
     end 
 /////////////////////////////////////////////
 // Test the counter as a blackbox circuit. //
@@ -199,9 +183,9 @@ module counter_with_strobe
     // formal verification comparisions values
     reg             past_valid          = 0;
     reg             past_valid_1        = 0;
-    //initial assume( past_valid == 0 && past_valid_1 == 0 );
 
     reg [WIDTH-1:0] tick_counter        = 0;
+    reg [WIDTH-1:0] enable_off_counter  = 0;
     always @( posedge clk ) begin
         // verifiy $past is valid
         past_valid   <= 1;
@@ -211,6 +195,11 @@ module counter_with_strobe
         if( rst || strobe ) begin    
             tick_counter = 0;   
         end 
+        if( rst || enable ) begin
+            enable_off_counter = 0;
+        end else begin
+            enable_off_counter = enable_off_counter + ready;
+        end
         if(!rst && enable ) begin
             // increment the tick counter when 'rst' is HIGH and 'enable' is HIGH
             tick_counter <= tick_counter + 1'b1;
@@ -219,23 +208,29 @@ module counter_with_strobe
 `endif 
 
 `ifdef FORMAL
-// Assume inputs to pass bmc test
+// Assume inputs
     // // // //
     // rst   //
     // // // //
         // force the test to start in a reset state
-        initial assume(rst);
-        // force any reset to last 2 clock cycles
-        // always @( posedge clk ) if( past_valid_1 ) assume( $fell(rst) ? $past(rst,2) : 1);
+        // always @( posedge clk ) if( !past_valid_1 ) assume(rst);
+        // force reset not toggle
+        // always @( posedge clk ) if( past_valid_1 ) assume( !rst );
     // // // // //
     // enable   //
     // // // // //
-            // force 'enable' to be LOW when '!valid' and no more than 2 ticks when 'valid'
+            //force 'enable' to be LOW when '!valid' and no more than 2 ticks when 'valid'
             always @( posedge clk ) begin
                 if( !past_valid_1 || rst )
                     assume(!enable);
-                else
-                    assume( &{!valid, !enable} || &{ $past(valid), |{enable, $past(enable), $past(enable,2)} } );
+                else begin
+                    if( !ready )
+                        assume( !enable );
+                    else begin
+                        if( enable_off_counter >= 2 )
+                            assume( enable );
+                    end
+                end
 
             end
     // // // // // //
@@ -244,10 +239,16 @@ module counter_with_strobe
         // force the 'reset_value' to be greater than 1 but less than sby test 'DEPTH' / 3 b/c of the alternating enable bit
         always @( posedge clk ) assume( reset_value >= 2 && reset_value <= 15 );
 
-        // force the 'reset_value to stay stable while running
-        // always @( posedge clk ) if( past_valid ) assume( (!rst || !strobe) ? !$changed(reset_value) : 1 );
-
-
+        // force the 'reset_value to only change when strobe is HIGH and enable is LOW
+        always @( posedge clk )
+            if( past_valid && !(strobe && !enable) )
+                assume( $stable(reset_value));
+    // // // // // // // // // // //
+    // counter_ff & tick_counter  //
+    // // // // // // // // // // //
+    always @( posedge clk )
+        if( ready )
+            assume( counter_ff == tick_counter + 1 );
 
 // induction testing
 // using a 8 bit counter, need a test depth > 255 with enable forced high, 510 with enable toggling
@@ -256,16 +257,15 @@ module counter_with_strobe
     // The strobe can only go high when  ticks == 'reset_value'
     always @( posedge clk ) assert( |{  !past_valid_1,
                                         rst,
-                                        strobe == &{tick_counter == reset_value, $past(valid,2) }
+                                        strobe == &{tick_counter == $past(reset_value), valid }
                                     } );
-    // always @( posedge clk ) assert( !past_valid || rst || !strobe ||( strobe == ( tick_counter >= reset_value ) ) );
     // The strobe bit will only stays HIGH for 1 clock cycle
     always @( posedge clk ) assert( !past_valid ||                  // past is invalid
                                     !strobe     ||                  // strobe is off
                                     $changed(strobe)                // strobe has changed to HIGH
                             );
 
-    always @( posedge clk ) cover( strobe == 1'b1 );
+    always @( posedge clk ) cover( strobe );
 
 `endif
 endmodule
