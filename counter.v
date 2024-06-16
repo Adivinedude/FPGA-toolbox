@@ -26,9 +26,9 @@ module counter_with_strobe
 
     integer idx;    // for loop iterator
     `ifndef FORMAL
-        `include "toolbox/tail_recursion_iterators.v"
+        `include "toolbox/recursion_iterators.v"
     `else
-        `include "tail_recursion_iterators.v"
+        `include "recursion_iterators.v"
     `endif
     // 'trigger' comparator construction diagram
     // By using a overlapping slope structure (name not known), the comparators latency can be controlled
@@ -50,13 +50,13 @@ module counter_with_strobe
     localparam CHUNK_COUNT = WIDTH % ALU_WIDTH == 0 ? WIDTH / ALU_WIDTH : WIDTH / ALU_WIDTH + 1; // find the minimum amount of chunks needed to contain the counter
     localparam LAST_CHUNK_SIZE = WIDTH % ALU_WIDTH == 0 ? ALU_WIDTH : WIDTH % ALU_WIDTH; // find the size of the last chunk needed to contain the counter.
     localparam CMP_LUT_WIDTH =      f_TailRecursionGetStructureWidthForLatency(CHUNK_COUNT, LATENCY); // use the maxium 'latency' to find the comparators unit width
-    localparam CMP_REG_WIDTH =      f_TailRecursionGetStructureWidth(CHUNK_COUNT, CMP_LUT_WIDTH); // use the comparators width to find how many units are needed
+    localparam CMP_REG_WIDTH =      f_TailRecursionGetStructureCount(CHUNK_COUNT, CMP_LUT_WIDTH); // use the comparators width to find how many units are needed
     localparam CMP_LAST_LUT_WIDTH = f_TailRecursionGetLastStructureWidth(CHUNK_COUNT, CMP_LUT_WIDTH); // find the width of the last unit.
-    initial $display("WIDTH %d\nLATENCY %d\nALU_WIDTH %d\nCHUNK_COUNT %d\nLAST_CHUNK_SIZE %d\nCMP_LUT_WIDTH %d\nCMP_REG_WIDTH %d \nCMP_LAST_LUT_WIDTH:%d"
-        ,WIDTH, LATENCY, ALU_WIDTH, CHUNK_COUNT, LAST_CHUNK_SIZE, CMP_LUT_WIDTH, CMP_REG_WIDTH, CMP_LAST_LUT_WIDTH);
+    // initial $display("WIDTH %d\nLATENCY %d\nALU_WIDTH %d\nCHUNK_COUNT %d\nLAST_CHUNK_SIZE %d\nCMP_LUT_WIDTH %d\nCMP_REG_WIDTH %d \nCMP_LAST_LUT_WIDTH:%d"
+        // ,WIDTH, LATENCY, ALU_WIDTH, CHUNK_COUNT, LAST_CHUNK_SIZE, CMP_LUT_WIDTH, CMP_REG_WIDTH, CMP_LAST_LUT_WIDTH);
     // 'Used for formal verification, can be optimized away.
     // 'ready' used to indicate when enable can be 'HIGH'
-    // 'valid' used to indicate when strobe hay be 'HIGH'
+    // 'valid' used to indicate when strobe may be 'HIGH'
     reg [CHUNK_COUNT+1:0] ready_tracker   = 0;
     assign              ready           = ready_tracker[CHUNK_COUNT+1];
     reg                 strobe_valid    = 0;
@@ -142,12 +142,12 @@ module counter_with_strobe
             `define input_size  unit_index != (CMP_REG_WIDTH-1)?CMP_LUT_WIDTH-1:CMP_LAST_LUT_WIDTH-1
             // loop through each unit and assign the in and outs
             for( unit_index = 0; unit_index < CMP_REG_WIDTH; unit_index = unit_index + 1) begin
-                initial $display("input_size: %d", `input_size);
+                // initial $display("input_size: %d", `input_size);
                 // make the input wires for this unit   
                 wire [`input_size:0] unit_inputs;
                 // assign the inputs to their proper place
                 for( input_index = `input_size; input_index != ~0; input_index = input_index-1 ) begin
-                    initial $display("unit_index: %d input_index:%d func:%d", unit_index, input_index, f_TailRecursionGetStructureInputAddress(CHUNK_COUNT, CMP_LUT_WIDTH, unit_index, input_index));
+                    // initial $display("unit_index: %d input_index:%d func:%d", unit_index, input_index, f_TailRecursionGetStructureInputAddress(CHUNK_COUNT, CMP_LUT_WIDTH, unit_index, input_index));
                     assign unit_inputs[input_index] = 
                     comparator[f_TailRecursionGetStructureInputAddress(CHUNK_COUNT, CMP_LUT_WIDTH, unit_index, input_index)];
                 end

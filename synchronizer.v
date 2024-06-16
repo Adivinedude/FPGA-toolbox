@@ -1,8 +1,8 @@
 `default_nettype none
 
 module synchronizer #(
-        parameter DEPTH_INPUT  = 0,
-        parameter DEPTH_OUTPUT = 0,
+        parameter DEPTH_INPUT  = 2,
+        parameter DEPTH_OUTPUT = 2,
         parameter INIT         = 1'b0
 )( clk_in, in, clk_out, out);
 
