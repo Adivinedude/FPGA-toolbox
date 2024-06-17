@@ -195,7 +195,10 @@ function automatic [7:0] iterator_NaryRecursionGetStructureWidth;
     input [7:0] base, lut_width, unit, results;
     integer new_results;
     begin : iterator_NaryRecursionGetStructureWidth
-        new_results = results + ( (base % lut_width) ? (base / lut_width + 1) : (base / lut_width) );
+        new_results = results + ( (base % lut_width) ? (base / lut_width + 1) : (base / lut_width > lut_width) ? (base / lut_width) : lut_width );
+        //  5       =   0     +       10%2=0                                        10/2=5
+        //  8       =   5     +        5%2=1                5/2+1=3
+        //  9       =   8     +        2%2=0                                         2/2=1
         $display("\tbase:%d lut_width:%d unit:%d results:%d nr:%d", base, lut_width, unit, results, new_results);
         if( base == 0 )
             iterator_NaryRecursionGetStructureWidth = 0;    // overflow condition, requested unit not in range, width = 0 is a valid answer;
@@ -203,7 +206,7 @@ function automatic [7:0] iterator_NaryRecursionGetStructureWidth;
             iterator_NaryRecursionGetStructureWidth =
                 new_results <= unit  
                 // requested unit is on a different iteration, procede to the next iteration                            
-                    ?iterator_NaryRecursionGetStructureWidth(
+                    ? iterator_NaryRecursionGetStructureWidth(
                         base - ( (base % lut_width) ? (base / lut_width + 1) : (base / lut_width) ),
                         lut_width,
                         unit,
