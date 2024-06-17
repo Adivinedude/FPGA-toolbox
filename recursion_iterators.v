@@ -154,12 +154,12 @@ endfunction
     //                                              |
     //                                            trigger
 
-//  f_NaryRecursionGetStructureWidth - Returns the number of LUT needed to build structure
+//  f_NaryRecursionGetStructureCount - Returns the number of LUT needed to build structure
 //  base        - Total number of input bits to operate on
 //  lut_width   - Maxium width of the LUT used.
 //  rt          - Set to 0zero when calling this function, used internaly, exposed for recursion propertys
 //
-// First Call f_NaryRecursionGetStructureWidth(CHUNK_COUNT, LUT_WIDTH, 0 );
+// First Call f_NaryRecursionGetStructureCount(CHUNK_COUNT, LUT_WIDTH, 0 );
 function automatic [7:0] f_NaryRecursionGetStructureCount;
     input [7:0] base, lut_width;         
     f_NaryRecursionGetStructureCount=iterator_NaryRecursionGetStructureCount(base, lut_width, 0);
@@ -193,33 +193,46 @@ function automatic [7:0] f_NaryRecursionGetStructureWidth;
 endfunction
 function automatic [7:0] iterator_NaryRecursionGetStructureWidth;
     input [7:0] base, lut_width, unit, results;
+    integer new_results;
     begin : iterator_NaryRecursionGetStructureWidth
-    integer current_level_unit_count = base % lut_width ? base / lut_width + 1 : base / lut_width;
-    $display("\t\tbase:%d lut_width:%d unit:%d results:%d cluc:%d ", base, lut_width, unit, results, current_level_unit_count);
-
-    // iterator_NaryRecursionGetStructureWidth=
-    //     base >= unit
-    //         ? base / lut_width * ()
-    //         :iterator_NaryRecursionGetStructureWidth(
-    //             ,
-    //             lut_width,
-    //             unit,
-    //             (base / lut_width * lut_width == base
-    //                 ? base / lut_width
-    //                 : base / lut_width + 1)
-    //              + results );
+        new_results = results + ( (base % lut_width) ? (base / lut_width + 1) : (base / lut_width) );
+        $display("\tbase:%d lut_width:%d unit:%d results:%d nr:%d", base, lut_width, unit, results, new_results);
+        if( base == 0 )
+            iterator_NaryRecursionGetStructureWidth = 0;    // overflow condition, requested unit not in range, width = 0 is a valid answer;
+        else begin
+            iterator_NaryRecursionGetStructureWidth =
+                new_results <= unit  
+                // requested unit is on a different iteration, procede to the next iteration                            
+                    ?iterator_NaryRecursionGetStructureWidth(
+                        base - ( (base % lut_width) ? (base / lut_width + 1) : (base / lut_width) ),
+                        lut_width,
+                        unit,
+                        new_results )
+                // requested unit is on this iteration.
+                    : (unit - results) < (new_results - base - 1)
+                        // if this is not the last unit in the iteration
+                        ? lut_width
+                        // if this is the last unit in the iteration
+                        : (base % lut_width)
+                            ? base % lut_width
+                            : lut_width;
+        end      
     end
 endfunction
-    initial begin:test_f_NaryRecursionGetStructureWidth $display("f_NaryRecursionGetStructureWidth() lut_width%d",f_NaryRecursionGetStructureWidth(10, 2, 13));end   
+    initial begin:test_f_NaryRecursionGetStructureWidth 
+        integer unit_index;
+        $display("test_f_NaryRecursionGetStructureWidth()");
+        for(unit_index=0; unit_index < 11; unit_index = unit_index + 1)
+            $display("rt:%d",f_NaryRecursionGetStructureWidth(10,2,unit_index));
+    end
+
     //  LUT width 2                                     LUT width 3                                 LUT width 4
     //  base #  0___1   2___3   4___5   6___7   8___9   0___1___2   3___4___5   6___7___8   9   0___1___2___3   4___5___6___7   8___9
     //              |       |       |       |       |           |           |           |   |               |               |       |
     //             10______11      12______13      14          10__________11__________12  13              10______________11______12
     //                      |               |       |                                   |   |                                       |
-    //                     15______________16      17                                  14__15                                      trigger
+    //                     15______________16      17                                   14__15                                      trigger
     //                                      |       |                                       |
     //                                     18______19                                    trigger
     //                                              |
     //                                            trigger
-
-
