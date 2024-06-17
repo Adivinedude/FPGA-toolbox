@@ -11,4 +11,4 @@ High speed, self pipelining counter with strobe output. This is a second attempt
 on the parameter 'latency', which specifies the maximum number of clock cycles+1 the output should take to be valid.
 
 ## synchronizer.v
-A dff chain for external input synchronization. has parameters for input/output chain size, and both clocks.
+A dff chain for external input synchronization. has parameters for input/output chain size, and both input and output clocks.
