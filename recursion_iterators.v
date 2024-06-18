@@ -45,7 +45,7 @@ function automatic [7:0] iterator_TailRecursionGetVectorSize;
                 ,lut_width
                 ,current_count+1);
 endfunction
-    // initial begin:test_GetCmpWidth integer idx;$display("f_TailRecursionGetVectorSize()");for(idx=2;idx<=10;idx=idx+1)begin $display("\t\t\t:10 lut_width:%d cmp_width:%d",idx,f_TailRecursionGetVectorSize(10,idx));end end
+    // initial begin:test_TailRecursionGetVectorSize integer idx;$display("f_TailRecursionGetVectorSize()");for(idx=2;idx<=10;idx=idx+1)begin $display("\t\t\t:10 lut_width:%d cmp_width:%d",idx,f_TailRecursionGetVectorSize(10,idx));end end
 
 // f_TailRecursionGetLastUnitWidth - Returns the total number of inputs for the last UNIT of the comparator structure
 //  base        - Total number of input bits to compare
@@ -74,7 +74,7 @@ function automatic [7:0] iterator_TailRecursionGetLastUnitWidth;
                     ?lut_width
                     :base+1));
 endfunction
-    //initial begin:test_f_TailRecursionGetLastStructureWidth integer idx; for(idx=2;idx<10;idx=idx+1)$display("f_TailRecursionGetLastUnitWidth(.base(10).lut_width(%d)) last_lut_width%d",idx,f_TailRecursionGetLastUnitWidth(10, idx));end   
+    //initial begin:test_TailRecursionGetLastUnitWidth integer idx; for(idx=2;idx<10;idx=idx+1)$display("f_TailRecursionGetLastUnitWidth(.base(10).lut_width(%d)) last_lut_width%d",idx,f_TailRecursionGetLastUnitWidth(10, idx));end   
 
 // f_TailRecursionGetUnitWidthForLatency - Returns the smalles LUT width needed to set the structure's latency to a maxium value.
 //                           The actual latency will be less than or equal to the request
@@ -94,7 +94,7 @@ function automatic [7:0] iterator_TailRecursionGetUnitWidthForLatency;
             ?lut_width
             :iterator_TailRecursionGetUnitWidthForLatency(base,latency,lut_width+1);
 endfunction
-    //initial begin:test_GetLutWidthForLatency integer idx;$display("f_TailRecursionGetUnitWidthForLatency()");for(idx=1;idx<=10;idx=idx+1)begin $display("\t\t\tbase:10 latency:%d lut_width:%d",idx,f_TailRecursionGetUnitWidthForLatency(10,idx));end end
+    //initial begin:test_TailRecursionGetUnitWidthForLatency integer idx;$display("f_TailRecursionGetUnitWidthForLatency()");for(idx=1;idx<=10;idx=idx+1)begin $display("\t\t\tbase:10 latency:%d lut_width:%d",idx,f_TailRecursionGetUnitWidthForLatency(10,idx));end end
 
 // f_TailRecursionGetUnitInputAddress - Returns the index for the base bit requested.
 //  cmp_width       - width of the comparator
@@ -130,12 +130,12 @@ function automatic [7:0] iterator_TailRecursionGetUnitInputAddress;
                 past_output_index+1,
                 current_unit+1);
 endfunction
-    // initial begin:test_GetLutInputAddress integer unit_index,input_index;$display("f_TailRecursionGetUnitInputAddress");$display("\t\t\tBase:10 LUT_WIDTH:4 LUT_COUNT:3");for(unit_index=0;unit_index<3;unit_index=unit_index+1)for( input_index=0;input_index<4;input_index=input_index+1)$display("unit:%d input:%d address:%d",unit_index,input_index,f_TailRecursionGetUnitInputAddress(10,4,unit_index,input_index));end
+    // initial begin:test_TailRecursionGetUnitInputAddress integer unit_index,input_index;$display("f_TailRecursionGetUnitInputAddress");$display("\t\t\tBase:10 LUT_WIDTH:4 LUT_COUNT:3");for(unit_index=0;unit_index<3;unit_index=unit_index+1)for( input_index=0;input_index<4;input_index=input_index+1)$display("unit:%d input:%d address:%d",unit_index,input_index,f_TailRecursionGetUnitInputAddress(10,4,unit_index,input_index));end
 
 //
     ///////////////////////////////////////////
     // N-ary tree Iteration Functions        //
-    // f_NaryRecursionGetUnitCount           //
+    // f_NaryRecursionGetVectorSize           //
     // f_NaryRecursionGetLastUnitWidth       //
     // f_NaryRecursionGetDepth               //
     // f_NaryRecursionGetUnitWidthForLatency //
@@ -155,22 +155,22 @@ endfunction
     //                                              |
     //                                            trigger
 
-//  f_NaryRecursionGetUnitCount - Returns the number of LUT needed to build structure
+//  f_NaryRecursionVectorSize - Returns the number of LUT needed to build structure
 //  base        - Total number of input bits to operate on
 //  lut_width   - Maxium width of the LUT used.
 //  rt          - Set to 0zero when calling this function, used internaly, exposed for recursion propertys
 //
-// First Call f_NaryRecursionGetUnitCount(CHUNK_COUNT, LUT_WIDTH, 0 );
-function automatic [7:0] f_NaryRecursionGetUnitCount;
+// First Call f_NaryRecursionVectorSize(CHUNK_COUNT, LUT_WIDTH, 0 );
+function automatic [7:0] f_NaryRecursionVectorSize;
     input [7:0] base, lut_width;         
-    f_NaryRecursionGetUnitCount=iterator_NaryRecursionGetUnitCount(base, lut_width, 0);
+    f_NaryRecursionVectorSize=iterator_NaryRecursionVectorSize(base, lut_width, 0);
 endfunction
-function automatic [7:0] iterator_NaryRecursionGetUnitCount;
+function automatic [7:0] iterator_NaryRecursionVectorSize;
     input [7:0] base, lut_width, rt;   
-    iterator_NaryRecursionGetUnitCount=
+    iterator_NaryRecursionVectorSize=
         base==1
             ?rt
-            :iterator_NaryRecursionGetUnitCount(
+            :iterator_NaryRecursionVectorSize(
                 base / lut_width * lut_width == base
                     ? base / lut_width
                     : base / lut_width + 1
@@ -179,7 +179,7 @@ function automatic [7:0] iterator_NaryRecursionGetUnitCount;
                     ? base / lut_width
                     : (base / lut_width) + 1));
 endfunction
-    // initial begin:test_NaryRecursionGetStructureWidth integer idx;$display("f_NaryRecursionGetUnitCount()");for(idx=2;idx<=10;idx=idx+1)begin $display("\t\t\t:10 lut_width:%d cmp_width:%d",idx,f_NaryRecursionGetUnitCount(10,idx));end end
+    // initial begin:test_NaryRecursionVectorSize integer idx;$display("f_NaryRecursionVectorSize()");for(idx=2;idx<=10;idx=idx+1)begin $display("\t\t\t:10 lut_width:%d cmp_width:%d",idx,f_NaryRecursionVectorSize(10,idx));end end
 
 // f_NaryRecursionGetStructureWidth - Returns the total number of inputs for unit requested
 //  base        - Total number of input bits to compare
@@ -218,7 +218,35 @@ function automatic [7:0] iterator_NaryRecursionGetStructureWidth;
         end      
     end
 endfunction
-    // initial begin:test_f_NaryRecursionGetStructureWidth integer unit_index, test_lut_width;$display("test_f_NaryRecursionGetStructureWidth()");for(test_lut_width=2; test_lut_width < 5; test_lut_width = test_lut_width + 1)for(unit_index=0; unit_index < 11; unit_index = unit_index + 1)$display("rt:%d",f_NaryRecursionGetStructureWidth(10,test_lut_width,unit_index));end
+    // initial begin:test_NaryRecursionGetStructureWidth integer unit_index, test_lut_width;$display("test_f_NaryRecursionGetStructureWidth()");for(test_lut_width=2; test_lut_width < 5; test_lut_width = test_lut_width + 1)for(unit_index=0; unit_index < 11; unit_index = unit_index + 1)$display("rt:%d",f_NaryRecursionGetStructureWidth(10,test_lut_width,unit_index));end
+
+//  f_NaryRecursionGetDepth - Returns the depth of the structure
+//  base        - Total number of input bits to operate on
+//  lut_width   - Maxium width of the LUT used.
+//  rt          - Set to 0zero when calling this function, used internaly, exposed for recursion propertys
+//
+// First Call f_NaryRecursionGetDepth(CHUNK_COUNT, LUT_WIDTH, 0 );
+function automatic [7:0] f_NaryRecursionGetDepth;
+    input [7:0] base, lut_width;         
+    f_NaryRecursionGetDepth=iterator_NaryRecursionGetDepth(base, lut_width, 0);
+endfunction
+
+function automatic [7:0] iterator_NaryRecursionGetDepth;
+    input [7:0] base, lut_width, rt;   
+    iterator_NaryRecursionGetDepth=
+        base==1
+            ?rt
+            :iterator_NaryRecursionGetDepth(
+                base / lut_width * lut_width == base
+                    ? base / lut_width
+                    : base / lut_width + 1
+                ,lut_width
+                ,rt + 1);
+endfunction
+     initial begin:test_NaryRecursionGetDepth integer idx;$display("f_NaryRecursionGetDepth()");for(idx=2;idx<=10;idx=idx+1)begin $display("\t\t\t:10 lut_width:%d cmp_width:%d",idx,f_NaryRecursionGetDepth(10,idx));end end
+
+
+
 
 // f_NaryRecursionGetStructureWidthForLatency - Returns the smallest LUT width needed to set the structure's latency to a maxium value.
 //                           The actual latency will be less than or equal to the request
@@ -238,7 +266,7 @@ function automatic [7:0] iterator_NaryRecursionGetStructureWidthForLatency;
             ?lut_width
             :iterator_NaryRecursionGetStructureWidthForLatency(base,latency,lut_width+1);
 endfunction
-    //initial begin:test_GetLutWidthForLatency integer idx;$display("f_TailRecursionGetUnitWidthForLatency()");for(idx=1;idx<=10;idx=idx+1)begin $display("\t\t\tbase:10 latency:%d lut_width:%d",idx,f_TailRecursionGetUnitWidthForLatency(10,idx));end end
+    //initial begin:test_NaryRecursionGetStructureWidthForLatency integer idx;$display("f_TailRecursionGetUnitWidthForLatency()");for(idx=1;idx<=10;idx=idx+1)begin $display("\t\t\tbase:10 latency:%d lut_width:%d",idx,f_TailRecursionGetUnitWidthForLatency(10,idx));end end
 
     //  LUT width 2 Unit Count 11                       LUT width 3 Unit Count 7                LUT width 4 Unit Count 4
     //  base #  0___1   2___3   4___5   6___7   8___9   0___1___2   3___4___5   6___7___8   9   0___1___2___3   4___5___6___7   8___9
