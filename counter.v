@@ -49,9 +49,9 @@ module counter_with_strobe
     localparam ALU_WIDTH  = WIDTH / LATENCY * LATENCY == WIDTH ? WIDTH / LATENCY : WIDTH / LATENCY + 1; // the needed delay as specified in parameter LATENCY. protect values from base2 rounding errors
     localparam CHUNK_COUNT = WIDTH % ALU_WIDTH == 0 ? WIDTH / ALU_WIDTH : WIDTH / ALU_WIDTH + 1; // find the minimum amount of chunks needed to contain the counter
     localparam LAST_CHUNK_SIZE = WIDTH % ALU_WIDTH == 0 ? ALU_WIDTH : WIDTH % ALU_WIDTH; // find the size of the last chunk needed to contain the counter.
-    localparam CMP_LUT_WIDTH =      f_TailRecursionGetStructureWidthForLatency(CHUNK_COUNT, LATENCY); // use the maxium 'latency' to find the comparators unit width
-    localparam CMP_REG_WIDTH =      f_TailRecursionGetStructureCount(CHUNK_COUNT, CMP_LUT_WIDTH); // use the comparators width to find how many units are needed
-    localparam CMP_LAST_LUT_WIDTH = f_TailRecursionGetLastStructureWidth(CHUNK_COUNT, CMP_LUT_WIDTH); // find the width of the last unit.
+    localparam CMP_LUT_WIDTH =      f_TailRecursionGetUnitWidthForLatency(CHUNK_COUNT, LATENCY); // use the maxium 'latency' to find the comparators unit width
+    localparam CMP_REG_WIDTH =      f_TailRecursionGetVectorSize(CHUNK_COUNT, CMP_LUT_WIDTH); // use the comparators width to find how many units are needed
+    localparam CMP_LAST_LUT_WIDTH = f_TailRecursionGetLastUnitWidth(CHUNK_COUNT, CMP_LUT_WIDTH); // find the width of the last unit.
     // initial $display("WIDTH %d\nLATENCY %d\nALU_WIDTH %d\nCHUNK_COUNT %d\nLAST_CHUNK_SIZE %d\nCMP_LUT_WIDTH %d\nCMP_REG_WIDTH %d \nCMP_LAST_LUT_WIDTH:%d"
         // ,WIDTH, LATENCY, ALU_WIDTH, CHUNK_COUNT, LAST_CHUNK_SIZE, CMP_LUT_WIDTH, CMP_REG_WIDTH, CMP_LAST_LUT_WIDTH);
     // 'Used for formal verification, can be optimized away.
@@ -149,7 +149,7 @@ module counter_with_strobe
                 for( input_index = `input_size; input_index != ~0; input_index = input_index-1 ) begin
                     // initial $display("unit_index: %d input_index:%d func:%d", unit_index, input_index, f_TailRecursionGetStructureInputAddress(CHUNK_COUNT, CMP_LUT_WIDTH, unit_index, input_index));
                     assign unit_inputs[input_index] = 
-                    comparator[f_TailRecursionGetStructureInputAddress(CHUNK_COUNT, CMP_LUT_WIDTH, unit_index, input_index)];
+                    comparator[f_TailRecursionGetUnitInputAddress(CHUNK_COUNT, CMP_LUT_WIDTH, unit_index, input_index)];
                 end
                 // perform the function and store the output
                 always @( posedge clk ) begin
