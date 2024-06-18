@@ -217,10 +217,4 @@ function automatic [7:0] iterator_NaryRecursionGetStructureWidth;
         end      
     end
 endfunction
-    initial begin:test_f_NaryRecursionGetStructureWidth 
-        integer unit_index, test_lut_width;
-        $display("test_f_NaryRecursionGetStructureWidth()");
-            for(test_lut_width=2; test_lut_width < 5; test_lut_width = test_lut_width + 1)
-                for(unit_index=0; unit_index < 11; unit_index = unit_index + 1)
-                    $display("rt:%d",f_NaryRecursionGetStructureWidth(10,test_lut_width,unit_index));
-    end
+    // initial begin:test_f_NaryRecursionGetStructureWidth integer unit_index, test_lut_width;$display("test_f_NaryRecursionGetStructureWidth()");for(test_lut_width=2; test_lut_width < 5; test_lut_width = test_lut_width + 1)for(unit_index=0; unit_index < 11; unit_index = unit_index + 1)$display("rt:%d",f_NaryRecursionGetStructureWidth(10,test_lut_width,unit_index));end
