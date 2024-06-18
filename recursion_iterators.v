@@ -224,14 +224,3 @@ endfunction
                 for(unit_index=0; unit_index < 11; unit_index = unit_index + 1)
                     $display("rt:%d",f_NaryRecursionGetStructureWidth(10,test_lut_width,unit_index));
     end
-
-    //  LUT width 2                                     LUT width 3                                 LUT width 4
-    //  base #  0___1   2___3   4___5   6___7   8___9   0___1___2   3___4___5   6___7___8   9   0___1___2___3   4___5___6___7   8___9
-    //              |       |       |       |       |           |           |           |   |               |               |       |
-    //             10______11      12______13      14          10__________11__________12  13              10______________11______12
-    //                      |               |       |                                   |   |                                       |
-    //                     15______________16      17                                   14__15                                      trigger
-    //                                      |       |                                       |
-    //                                     18______19                                    trigger
-    //                                              |
-    //                                            trigger
