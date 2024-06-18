@@ -94,7 +94,7 @@ function automatic [7:0] iterator_TailRecursionGetUnitWidthForLatency;
             ?lut_width
             :iterator_TailRecursionGetUnitWidthForLatency(base,latency,lut_width+1);
 endfunction
-    //initial begin:test_TailRecursionGetUnitWidthForLatency integer idx;$display("f_TailRecursionGetUnitWidthForLatency()");for(idx=1;idx<=10;idx=idx+1)begin $display("\t\t\tbase:10 latency:%d lut_width:%d",idx,f_TailRecursionGetUnitWidthForLatency(10,idx));end end
+    // initial begin:test_TailRecursionGetUnitWidthForLatency integer idx;$display("f_TailRecursionGetUnitWidthForLatency()");for(idx=1;idx<=10;idx=idx+1)begin $display("\t\t\tbase:10 latency:%d lut_width:%d",idx,f_TailRecursionGetUnitWidthForLatency(10,idx));end end
 
 // f_TailRecursionGetUnitInputAddress - Returns the index for the base bit requested.
 //  cmp_width       - width of the comparator
@@ -243,30 +243,27 @@ function automatic [7:0] iterator_NaryRecursionGetDepth;
                 ,lut_width
                 ,rt + 1);
 endfunction
-     initial begin:test_NaryRecursionGetDepth integer idx;$display("f_NaryRecursionGetDepth()");for(idx=2;idx<=10;idx=idx+1)begin $display("\t\t\t:10 lut_width:%d cmp_width:%d",idx,f_NaryRecursionGetDepth(10,idx));end end
+    //  initial begin:test_NaryRecursionGetDepth integer idx;$display("f_NaryRecursionGetDepth()");for(idx=2;idx<=10;idx=idx+1)begin $display("\t\t\t:10 lut_width:%d cmp_width:%d",idx,f_NaryRecursionGetDepth(10,idx));end end
 
-
-
-
-// f_NaryRecursionGetStructureWidthForLatency - Returns the smallest LUT width needed to set the structure's latency to a maxium value.
+// f_NaryRecursionGetUnitWidthForLatency - Returns the smallest UNIT width needed to set the structure's latency to a maxium value.
 //                           The actual latency will be less than or equal to the request
 //  base        - Total number of input bits to compare
 //  latency     - Maxium latency.
-//  lut_width   - MUST BE greater than to 1one. Minium size LUT to use for the comparator. Exposed for recursion propertys
+//  lut_width   - MUST BE greater than to 1one. Minium size UNIT to use for the comparator. Exposed for recursion propertys
 //
-// First Call iterator_NaryRecursionGetStructureWidthForLatency(CHUNK_COUNT, LATENCY, 2);
-function automatic [7:0] f_NaryRecursionGetStructureWidthForLatency;
+// First Call iterator_NaryRecursionGetUnitWidthForLatency(CHUNK_COUNT, LATENCY, 2);
+function automatic [7:0] f_NaryRecursionGetUnitWidthForLatency;
     input [7:0] base, latency;
-    f_NaryRecursionGetStructureWidthForLatency=iterator_NaryRecursionGetStructureWidthForLatency(base,latency,2);
+    f_NaryRecursionGetUnitWidthForLatency=iterator_NaryRecursionGetUnitWidthForLatency(base,latency,2);
 endfunction
-function automatic [7:0] iterator_NaryRecursionGetStructureWidthForLatency;
+function automatic [7:0] iterator_NaryRecursionGetUnitWidthForLatency;
     input [7:0] base, latency, lut_width;
-    iterator_NaryRecursionGetStructureWidthForLatency=
-        (iterator_TailRecursionGetVectorSize(base,lut_width,0)<=latency)
+    iterator_NaryRecursionGetUnitWidthForLatency=
+        (f_NaryRecursionGetDepth(base,lut_width)<=latency)
             ?lut_width
-            :iterator_NaryRecursionGetStructureWidthForLatency(base,latency,lut_width+1);
+            :iterator_NaryRecursionGetUnitWidthForLatency(base,latency,lut_width+1);
 endfunction
-    //initial begin:test_NaryRecursionGetStructureWidthForLatency integer idx;$display("f_TailRecursionGetUnitWidthForLatency()");for(idx=1;idx<=10;idx=idx+1)begin $display("\t\t\tbase:10 latency:%d lut_width:%d",idx,f_TailRecursionGetUnitWidthForLatency(10,idx));end end
+    // initial begin:test_NaryRecursionGetStructureWidthForLatency integer idx;$display("f_NaryRecursionGetUnitWidthForLatency()");for(idx=1;idx<=10;idx=idx+1)begin $display("\t\t\tbase:10 latency:%d lut_width:%d",idx,f_NaryRecursionGetUnitWidthForLatency(10,idx));end end
 
     //  LUT width 2 Unit Count 11                       LUT width 3 Unit Count 7                LUT width 4 Unit Count 4
     //  base #  0___1   2___3   4___5   6___7   8___9   0___1___2   3___4___5   6___7___8   9   0___1___2___3   4___5___6___7   8___9
