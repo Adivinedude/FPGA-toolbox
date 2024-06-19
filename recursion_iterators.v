@@ -17,7 +17,7 @@
 // your option) any later version.
 //
 // This program is distributed in the hope that it will be useful, but WITHOUT
-// ANY WARRANTY; without even the implied warranty of MERCHANTIBILITY or
+// ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
 // FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License
 // for more details.
 //
@@ -36,7 +36,7 @@
 //                                            
 // Intended to be used to generate a magnitude comparator result for a staged ripple carry adder 
 // By using a overlapping slope structure (name not known), the comparators latency can be controlled
-// in order to produce a valid output, 1 clock after the carry chain has completly propagated 
+// in order to produce a valid output, 1 clock after the carry chain has completely propagated 
 //  LUT width 2                                 LUT width 3                                 LUT width 4
 //  base #  0___1   2   3   4   5   6   7   8   9   0___1___2   3   4   5   6   7   8   9   0___1___2___3   4   5   6   7   8   9
 //             10___|   |   |   |   |   |   |   |          10___|___|   |   |   |   |   |              10___|___|___|   |   |   |
@@ -52,8 +52,8 @@
 
 //  f_TailRecursionGetVectorSize - Returns the number of UNITs needed to build structure
 //  base            - Total number of input bits to compare
-//  lut_width       - Maxium width of the UNITs input used.
-//  current_count   - Set to 0zero when calling this function, used internaly, exposed for recursion propertys
+//  lut_width       - Maximum width of the UNITs input used.
+//  current_count   - Set to 0zero when calling this function, used internal, exposed for recursion property's
 //
 // First Call f_TailRecursionGetVectorSize(CHUNK_COUNT, LUT_WIDTH, 0 );
 function automatic [7:0] f_TailRecursionGetVectorSize;
@@ -78,8 +78,8 @@ endfunction
 
 // f_TailRecursionGetLastUnitWidth - Returns the total number of inputs for the last UNIT of the comparator structure
 //  base        - Total number of input bits to compare
-//  lut_width   - Maxium width of LUT used.
-//  rt          - Set to 0zero when calling this function, used internaly, exposed for recursion propertys
+//  lut_width   - Maximum width of LUT used.
+//  rt          - Set to 0zero when calling this function, used internal, exposed for recursion property's
 //
 // First Call iterator_TailRecursionGetLastUnitWidth(CHUNK_COUNT, LUT_WIDTH, 0, 0);
 function automatic [7:0] f_TailRecursionGetLastUnitWidth;
@@ -105,11 +105,11 @@ function automatic [7:0] iterator_TailRecursionGetLastUnitWidth;
 endfunction
     //initial begin:test_TailRecursionGetLastUnitWidth integer idx; for(idx=2;idx<10;idx=idx+1)$display("f_TailRecursionGetLastUnitWidth(.base(10).lut_width(%d)) last_lut_width%d",idx,f_TailRecursionGetLastUnitWidth(10, idx));end   
 
-// f_TailRecursionGetUnitWidthForLatency - Returns the smalles LUT width needed to set the structure's latency to a maxium value.
+// f_TailRecursionGetUnitWidthForLatency - Returns the smallest LUT width needed to set the structure's latency to a maximum value.
 //                           The actual latency will be less than or equal to the request
 //  base        - Total number of input bits to compare
-//  latency     - Maxium latency.
-//  lut_width   - MUST BE greater than to 1one. Minium size LUT to use for the comparator. Exposed for recursion propertys
+//  latency     - Maximum latency.
+//  lut_width   - MUST BE greater than to 1one. Minium size LUT to use for the comparator. Exposed for recursion property's
 //
 // First Call iterator_TailRecursionGetUnitWidthForLatency(CHUNK_COUNT, LATENCY, 2);
 function automatic [7:0] f_TailRecursionGetUnitWidthForLatency;
@@ -130,9 +130,9 @@ endfunction
 //  lut_width       - width of the lut used in the comparator
 //  unit_index      - which LUT index is being requested
 //  input_index     - which input of the LUT is being requested
-//  base_input_index- Base input address. Exposed for recursion propertys
-//  past_output_index- Past output address. Exposed for recursion propertys
-//  current_unit    - current unit_index. Exposed for recursion propertys
+//  base_input_index- Base input address. Exposed for recursion property's
+//  past_output_index- Past output address. Exposed for recursion property's
+//  current_unit    - current unit_index. Exposed for recursion property's
 //
 //  First Call iterator_TailRecursionGetUnitInputAddress( CHUNK_COUNT, LUT_WIDTH, LUT_NUMBER, INPUT_NUMBER, 0, ~0, 0);
 function automatic [7:0] f_TailRecursionGetUnitInputAddress;
@@ -186,8 +186,8 @@ endfunction
 
 //  f_NaryRecursionVectorSize - Returns the number of LUT needed to build structure
 //  base        - Total number of input bits to operate on
-//  lut_width   - Maxium width of the LUT used.
-//  rt          - Set to 0zero when calling this function, used internaly, exposed for recursion propertys
+//  lut_width   - Maximum width of the LUT used.
+//  rt          - Set to 0zero when calling this function, used internal, exposed for recursion property's
 //
 // First Call f_NaryRecursionVectorSize(CHUNK_COUNT, LUT_WIDTH, 0 );
 function automatic [7:0] f_NaryRecursionVectorSize;
@@ -212,9 +212,9 @@ endfunction
 
 // f_NaryRecursionGetLastUnitWidth - Returns the total number of inputs for unit requested
 //  base        - Total number of input bits to compare
-//  lut_width   - Maxium width of LUT used.
+//  lut_width   - Maximum width of LUT used.
 //  unit        - unit number whos width will be returned
-//  rt          - Set to 0zero when calling this function, used internaly, exposed for recursion propertys
+//  rt          - Set to 0zero when calling this function, used internal, exposed for recursion property's
 //
 // First Call iterator_NaryRecursionGetLastUnitWidth(CHUNK_COUNT, LUT_WIDTH, unit, 0, 0);
 function automatic [7:0] f_NaryRecursionGetLastUnitWidth;
@@ -251,8 +251,8 @@ endfunction
 
 //  f_NaryRecursionGetDepth - Returns the depth of the structure
 //  base        - Total number of input bits to operate on
-//  lut_width   - Maxium width of the LUT used.
-//  rt          - Set to 0zero when calling this function, used internaly, exposed for recursion propertys
+//  lut_width   - Maximum width of the LUT used.
+//  rt          - Set to 0zero when calling this function, used internal, exposed for recursion property's
 //
 // First Call f_NaryRecursionGetDepth(CHUNK_COUNT, LUT_WIDTH, 0 );
 function automatic [7:0] f_NaryRecursionGetDepth;
@@ -273,11 +273,11 @@ function automatic [7:0] iterator_NaryRecursionGetDepth;
 endfunction
     //  initial begin:test_NaryRecursionGetDepth integer idx;$display("f_NaryRecursionGetDepth()");for(idx=2;idx<=10;idx=idx+1)begin $display("\t\t\t:10 lut_width:%d cmp_width:%d",idx,f_NaryRecursionGetDepth(10,idx));end end
 
-// f_NaryRecursionGetUnitWidthForLatency - Returns the smallest UNIT width needed to set the structure's latency to a maxium value.
+// f_NaryRecursionGetUnitWidthForLatency - Returns the smallest UNIT width needed to set the structure's latency to a maximum value.
 //                           The actual latency will be less than or equal to the request
 //  base        - Total number of input bits to compare
-//  latency     - Maxium latency.
-//  lut_width   - MUST BE greater than to 1one. Minium size UNIT to use for the comparator. Exposed for recursion propertys
+//  latency     - Maximum latency.
+//  lut_width   - MUST BE greater than to 1one. Minium size UNIT to use for the comparator. Exposed for recursion property's
 //
 // First Call iterator_NaryRecursionGetUnitWidthForLatency(CHUNK_COUNT, LATENCY, 2);
 function automatic [7:0] f_NaryRecursionGetUnitWidthForLatency;
@@ -298,9 +298,9 @@ endfunction
 //  lut_width       - width of the lut used in the comparator
 //  unit_index      - which LUT index is being requested
 //  input_index     - which input of the LUT is being requested
-//  base_input_index- Base input address. Exposed for recursion propertys
-//  past_output_index- Past output address. Exposed for recursion propertys
-//  current_unit    - current unit_index. Exposed for recursion propertys
+//  base_input_index- Base input address. Exposed for recursion property's
+//  past_output_index- Past output address. Exposed for recursion property's
+//  current_unit    - current unit_index. Exposed for recursion property's
 //
 //  First Call iterator_NaryRecursionGetUnitInputAddress( CHUNK_COUNT, LUT_WIDTH, LUT_NUMBER, INPUT_NUMBER, 0, ~0, 0);
 function automatic [7:0] f_NaryRecursionGetUnitInputAddress;

@@ -60,7 +60,7 @@ module counter_with_strobe
     `endif
     // 'trigger' comparator construction diagram
     // By using a overlapping slope structure (name not known), the comparators latency can be controlled
-    // in order to produce a valid output, 1 clock after the alu's carry chain has completly propagated 
+    // in order to produce a valid output, 1 clock after the alu's carry chain has completely propagated 
     //  LUT width 2                                 LUT width 3                                 LUT width 4
     //  base #  0___1   2   3   4   5   6   7   8   9   0___1___2   3   4   5   6   7   8   9   0___1___2___3   4   5   6   7   8   9
     //              0___|   |   |   |   |   |   |   |           0___|___|   |   |   |   |   |               0___|___|___|   |   |   |
@@ -73,11 +73,11 @@ module counter_with_strobe
     //                                          7___|
     //                                              trigger
 
-    // determin the chunk width. knowing that each chunk will take 1 tick, 'width' / 'latency' will provide
+    // determine the chunk width. knowing that each chunk will take 1 tick, 'width' / 'latency' will provide
     localparam ALU_WIDTH  = WIDTH / LATENCY * LATENCY == WIDTH ? WIDTH / LATENCY : WIDTH / LATENCY + 1; // the needed delay as specified in parameter LATENCY. protect values from base2 rounding errors
     localparam CHUNK_COUNT = WIDTH % ALU_WIDTH == 0 ? WIDTH / ALU_WIDTH : WIDTH / ALU_WIDTH + 1; // find the minimum amount of chunks needed to contain the counter
     localparam LAST_CHUNK_SIZE = WIDTH % ALU_WIDTH == 0 ? ALU_WIDTH : WIDTH % ALU_WIDTH; // find the size of the last chunk needed to contain the counter.
-    localparam CMP_LUT_WIDTH =      f_TailRecursionGetUnitWidthForLatency(CHUNK_COUNT, LATENCY); // use the maxium 'latency' to find the comparators unit width
+    localparam CMP_LUT_WIDTH =      f_TailRecursionGetUnitWidthForLatency(CHUNK_COUNT, LATENCY); // use the maximum 'latency' to find the comparators unit width
     localparam CMP_REG_WIDTH =      f_TailRecursionGetVectorSize(CHUNK_COUNT, CMP_LUT_WIDTH); // use the comparators width to find how many units are needed
     localparam CMP_LAST_LUT_WIDTH = f_TailRecursionGetLastUnitWidth(CHUNK_COUNT, CMP_LUT_WIDTH); // find the width of the last unit.
     // initial $display("WIDTH %d\nLATENCY %d\nALU_WIDTH %d\nCHUNK_COUNT %d\nLAST_CHUNK_SIZE %d\nCMP_LUT_WIDTH %d\nCMP_REG_WIDTH %d \nCMP_LAST_LUT_WIDTH:%d"
@@ -208,14 +208,14 @@ module counter_with_strobe
 `endif 
 
 `ifdef TEST_BENCH_RUNNING
-    // formal verification comparisions values
+    // formal verification comparisons values
     reg             past_valid          = 0;
     reg             past_valid_1        = 0;
 
     reg [WIDTH-1:0] tick_counter        = 0;
     reg [WIDTH-1:0] enable_off_counter  = 0;
     always @( posedge clk ) begin
-        // verifiy $past is valid
+        // verify $past is valid
         past_valid   <= 1;
         past_valid_1 <= past_valid;                    
 
