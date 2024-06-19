@@ -1,3 +1,32 @@
+////////////////////////////////////////////////////////////////////////////////
+//
+// Filename:	recursion_iterators.v
+//
+// Project:	pipeline recursion iterators 
+//
+// Purpose:	functions used for building pipeline data structures.
+//
+// Creator:	Ronald Rainwater
+// Data: 2024-6-18
+////////////////////////////////////////////////////////////////////////////////
+// Copyright (C) 2024, Ronald Rainwater
+//
+// This program is free software (firmware): you can redistribute it and/or
+// modify it under the terms of the GNU General Public License as published
+// by the Free Software Foundation, either version 3 of the License, or (at
+// your option) any later version.
+//
+// This program is distributed in the hope that it will be useful, but WITHOUT
+// ANY WARRANTY; without even the implied warranty of MERCHANTIBILITY or
+// FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License
+// for more details.
+//
+// You should have received a copy of the GNU General Public License along
+// with this program. If not, see <http://www.gnu.org/licenses/> for a copy.
+// License:	GPL, v3, as defined and found on www.gnu.org,
+//		http://www.gnu.org/licenses/gpl.html
+////////////////////////////////////////////////////////////////////////////////
+
 ////////////////////////////////////////////////
 // Tail Recursion Iteration Functions         //
 // f_TailRecursionGetVectorSize           //
@@ -291,4 +320,3 @@ function automatic [7:0] iterator_NaryRecursionGetUnitInputAddress;
         
 endfunction
     // initial begin:test_NaryRecursionGetUnitInputAddress integer unit_index,input_index;$display("f_NaryRecursionGetUnitInputAddress");for(unit_index=0;unit_index<3;unit_index=unit_index+1)for( input_index=0;input_index<4;input_index=input_index+1)$display("unit:%d input:%d address:%d",unit_index,input_index,f_NaryRecursionGetUnitInputAddress(10,4,unit_index,input_index));end
-    
