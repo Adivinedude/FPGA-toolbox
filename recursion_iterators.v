@@ -231,7 +231,7 @@ function automatic [7:0] iterator_NaryRecursionGetLastUnitWidth;
             iterator_NaryRecursionGetLastUnitWidth = 0;    // overflow condition, requested unit not in range, width = 0 is a valid answer;
         else begin
             if( (results + next_level_unit_count) <= unit) begin
-                // requested unit is on a different iteration, procede to the next iteration
+                // requested unit is on a different iteration, proceed to the next iteration
                 iterator_NaryRecursionGetLastUnitWidth = iterator_NaryRecursionGetLastUnitWidth(
                         next_level_unit_count,
                         lut_width,
