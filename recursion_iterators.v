@@ -213,7 +213,7 @@ endfunction
 // f_NaryRecursionGetLastUnitWidth - Returns the total number of inputs for unit requested
 //  base        - Total number of input bits to compare
 //  lut_width   - Maximum width of LUT used.
-//  unit        - unit number whos width will be returned
+//  unit        - unit number whom width will be returned
 //  rt          - Set to 0zero when calling this function, used internal, exposed for recursion property's
 //
 // First Call iterator_NaryRecursionGetLastUnitWidth(CHUNK_COUNT, LUT_WIDTH, unit, 0, 0);
@@ -226,7 +226,7 @@ function automatic [7:0] iterator_NaryRecursionGetLastUnitWidth;
     integer next_level_unit_count;
     begin : block_NaryRecursionGetLastUnitWidth
         next_level_unit_count = base / lut_width * lut_width == base ? base / lut_width : base / lut_width + 1;
-        $display("\tbase:%d lut_width:%d unit:%d results:%d nluc:%d", base, lut_width, unit, results, next_level_unit_count);
+        $display("\tbase:%d lut_width:%d unit:%d results:%d next:%d", base, lut_width, unit, results, next_level_unit_count);
         if( base == 1 )
             iterator_NaryRecursionGetLastUnitWidth = 0;    // overflow condition, requested unit not in range, width = 0 is a valid answer;
         else begin
