@@ -92,7 +92,7 @@ module counter_with_strobe
             counter_ff <= w_counter_ff;
             if( enable ) begin
                 if( trigger )
-                    counter_ff <= 'd1;
+                    counter_ff <= 'd0;
             end
         end
     end
