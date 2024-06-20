@@ -33,8 +33,8 @@ module counter_with_strobe
             parameter WIDTH     = 4,
             parameter LATENCY   = 4
         `else
-            parameter WIDTH     = 32,
-            parameter LATENCY   = 1
+            parameter WIDTH     = 16,
+            parameter LATENCY   = 16
         `endif
     )
     (
@@ -71,10 +71,8 @@ module counter_with_strobe
         end
     end
 
-    wire                trigger;
     reg     [WIDTH-1:0] counter_ff = 'd1;
     wire    [WIDTH-1:0] w_counter_ff;
-
     adder_pipelined #(.WIDTH(WIDTH), .LATENCY(LATENCY)) counter_plus_plus 
     (
         .clk(   clk),
@@ -84,6 +82,7 @@ module counter_with_strobe
         .q(     w_counter_ff)
     );
 
+    wire                trigger;
     assign trigger = counter_ff == reset_value;
     always @( posedge clk ) begin
         if( rst )
