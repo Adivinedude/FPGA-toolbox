@@ -74,24 +74,23 @@ module counter_with_strobe
     wire                trigger;
     reg     [WIDTH-1:0] counter_ff = 'd1;
     wire    [WIDTH-1:0] w_counter_ff;
-    reg                 counter_plus_plus_enable = 0;
-    assign              trigger = counter_ff == reset_value;
 
-    // adder_pipelined /*#(.WIDTH(WIDTH), .LATENCY(1))*/ counter_plus_plus 
-    // (
-    //     .clk(   clk),
-    //     .ce(    counter_plus_plus_enable),
-    //     .d(     counter_ff),
-    //     .i(     'd1),
-    //     .q(     w_counter_ff)
-    // );
+    adder_pipelined #(.WIDTH(WIDTH), .LATENCY(LATENCY)) counter_plus_plus 
+    (
+        .clk(   clk),
+        .ce(    enable),
+        .d(     counter_ff),
+        .i(     'd1),
+        .q(     w_counter_ff)
+    );
 
+    assign trigger = counter_ff == reset_value;
     always @( posedge clk ) begin
         if( rst )
             counter_ff <= 'd1;
         else begin
+            counter_ff <= w_counter_ff;
             if( enable ) begin
-                counter_ff <= counter_ff + 1'b1;
                 if( trigger )
                     counter_ff <= 'd1;
             end
