@@ -27,6 +27,7 @@
 //		http://www.gnu.org/licenses/gpl.html
 ////////////////////////////////////////////////////////////////////////////////
 `default_nettype none
+
 module math_pipelined
     #(
         parameter WIDTH     = 4,
@@ -37,7 +38,8 @@ module math_pipelined
         input   wire                ce,
         input   wire    [WIDTH-1:0] d,
         input   wire    [WIDTH-1:0] i,
-        output  wire    [WIDTH-1:0] q
+        output  wire    [WIDTH-1:0] sum,
+        output  wire    [WIDTH-1:0] sub
     );
     // determine the chunk width. knowing that each chunk will take 1 tick, 'width' / 'latency' will provide
     // the needed delay as specified in parameter LATENCY. protect values from base2 rounding errors
@@ -45,29 +47,57 @@ module math_pipelined
     // find the minimum amount of chunks needed to contain the counter
     localparam CHUNK_COUNT = WIDTH % ALU_WIDTH == 0 ? WIDTH / ALU_WIDTH : WIDTH / ALU_WIDTH + 1; 
     // find the size of the last chunk needed to contain the counter.
-    localparam LAST_CHUNK_SIZE = WIDTH % ALU_WIDTH == 0 ? ALU_WIDTH : WIDTH % ALU_WIDTH; 
-    genvar idx;
-    generate
-        wire [CHUNK_COUNT-1:0] w_cout_chain;
-        assign w_cout_chain[CHUNK_COUNT-1] = 1'b0;  // removes warning about bit being unset. will be optimized away
-        reg  [CHUNK_COUNT-1:0] r_cout_chain = 0;
-        reg  [WIDTH-1:0]       r_addend = 0;
+    localparam LAST_CHUNK_SIZE = WIDTH % ALU_WIDTH == 0 ? ALU_WIDTH : WIDTH % ALU_WIDTH;
 
+    reg  [WIDTH-1:0] r_input = 0;
+    always @( posedge clk ) begin
+        if( ce ) begin
+            r_input <= i;
+        end else begin
+            r_input <= 0;
+        end
+    end
+
+    genvar idx;
+    //addition
+    wire [CHUNK_COUNT-1:0] w_sum_cout_chain;
+    assign w_sum_cout_chain[CHUNK_COUNT-1] = 1'b0;  // removes warning about bit being unset. will be optimized away
+    reg  [CHUNK_COUNT-1:0] r_sum_cout_chain = 0;
+    generate
         for( idx = 0; idx <= CHUNK_COUNT - 1; idx = idx + 1 ) begin
             if( idx != CHUNK_COUNT - 1 ) begin // !LAST_CHUNK
-                assign { w_cout_chain[idx], q[idx*ALU_WIDTH+:ALU_WIDTH] } = { 1'b0, d[idx*ALU_WIDTH+:ALU_WIDTH] } + { 1'b0, r_addend[idx*ALU_WIDTH+:ALU_WIDTH] } + (idx == 0 ? 1'b0 : r_cout_chain[idx-1]);
+                assign { w_sum_cout_chain[idx], sum[idx*ALU_WIDTH+:ALU_WIDTH] } = { 1'b0, d[idx*ALU_WIDTH+:ALU_WIDTH] } + { 1'b0, r_input[idx*ALU_WIDTH+:ALU_WIDTH] } + (idx == 0 ? 1'b0 : r_sum_cout_chain[idx-1]);
             end else begin    // == LAST_CHUNK
-                assign q[WIDTH-1:WIDTH-LAST_CHUNK_SIZE] = d[WIDTH-1:WIDTH-LAST_CHUNK_SIZE] + { 1'b0, r_addend[WIDTH-1:WIDTH-LAST_CHUNK_SIZE] } + (idx == 0 ? 1'b0 : r_cout_chain[idx-1]);
+                assign sum[WIDTH-1:WIDTH-LAST_CHUNK_SIZE] = d[WIDTH-1:WIDTH-LAST_CHUNK_SIZE] + { 1'b0, r_input[WIDTH-1:WIDTH-LAST_CHUNK_SIZE] } + (idx == 0 ? 1'b0 : r_sum_cout_chain[idx-1]);
             end
         end 
-        always @( posedge clk ) begin
-            if( ce ) begin
-                r_addend <= i;
-                r_cout_chain <= 0;
-            end else begin
-                r_addend <= 0;
-                r_cout_chain <= w_cout_chain;
-            end
-        end
     endgenerate
+    always @( posedge clk ) begin
+        if( ce ) begin
+            r_sum_cout_chain <= 0;
+        end else begin
+            r_sum_cout_chain <= w_sum_cout_chain;
+        end
+    end
+
+    //subtraction
+    wire [CHUNK_COUNT-1:0] w_sub_cout_chain;
+    assign w_sub_cout_chain[CHUNK_COUNT-1] = 1'b0;  // removes warning about bit being unset. will be optimized away
+    reg  [CHUNK_COUNT-1:0] r_sub_cout_chain = 0;
+    generate
+        for( idx = 0; idx <= CHUNK_COUNT - 1; idx = idx + 1 ) begin
+            if( idx != CHUNK_COUNT - 1 ) begin // !LAST_CHUNK
+                assign { w_sub_cout_chain[idx], sub[idx*ALU_WIDTH+:ALU_WIDTH] } = { 1'b0, d[idx*ALU_WIDTH+:ALU_WIDTH] } - { 1'b0, r_input[idx*ALU_WIDTH+:ALU_WIDTH] } - (idx == 0 ? 1'b0 : r_sub_cout_chain[idx-1]);
+            end else begin    // == LAST_CHUNK
+                assign sub[WIDTH-1:WIDTH-LAST_CHUNK_SIZE] = d[WIDTH-1:WIDTH-LAST_CHUNK_SIZE] - { 1'b0, r_input[WIDTH-1:WIDTH-LAST_CHUNK_SIZE] } - (idx == 0 ? 1'b0 : r_sub_cout_chain[idx-1]);
+            end
+        end 
+    endgenerate
+    always @( posedge clk ) begin
+        if( ce ) begin
+            r_sub_cout_chain <= 0;
+        end else begin
+            r_sub_cout_chain <= w_sub_cout_chain;
+        end
+    end
 endmodule

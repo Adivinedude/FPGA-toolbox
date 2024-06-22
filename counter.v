@@ -75,11 +75,11 @@ module counter_with_strobe
     wire    [WIDTH-1:0] w_counter_ff;
     math_pipelined #(.WIDTH(WIDTH), .LATENCY(LATENCY)) counter_plus_plus 
     (
-        .clk(   clk),
-        .ce(    enable),
-        .d(     counter_ff),
-        .i(     'd1),
-        .q(     w_counter_ff)
+        .clk(   clk ),
+        .ce(    enable ),
+        .d(     counter_ff ),
+        .i(     'd1 ),
+        .sum(   w_counter_ff )
     );
 
     wire                trigger;
