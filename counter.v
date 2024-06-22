@@ -73,7 +73,7 @@ module counter_with_strobe
 
     reg     [WIDTH-1:0] counter_ff = 'd1;
     wire    [WIDTH-1:0] w_counter_ff;
-    adder_pipelined #(.WIDTH(WIDTH), .LATENCY(LATENCY)) counter_plus_plus 
+    math_pipelined #(.WIDTH(WIDTH), .LATENCY(LATENCY)) counter_plus_plus 
     (
         .clk(   clk),
         .ce(    enable),

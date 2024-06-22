@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
-// Filename:	adder_pipelined.v
+// Filename:	math_pipelined.v
 //
-// Project:	adder_pipelined 
+// Project:	math_pipelined 
 //
 // Purpose:	a fast pipelined ripple carry adder with configurable
 //          width and latency.
@@ -27,7 +27,7 @@
 //		http://www.gnu.org/licenses/gpl.html
 ////////////////////////////////////////////////////////////////////////////////
 `default_nettype none
-module adder_pipelined
+module math_pipelined
     #(
         parameter WIDTH     = 4,
         parameter LATENCY   = 4
