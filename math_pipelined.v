@@ -40,9 +40,9 @@ module math_pipelined
         input   wire    [WIDTH-1:0] I2,
         output  wire    [WIDTH-1:0] sum,
         output  wire    [WIDTH-1:0] sub,
-        output                      gate_and,
-        output                      gate_or,
-        output                      gate_xor
+        output  wire                gate_and,
+        output  wire                gate_or,
+        output  wire                gate_xor
     );
     `ifndef FORMAL
         `include "./toolbox/recursion_iterators.v"
@@ -67,11 +67,14 @@ module math_pipelined
     end
 
     genvar idx;
+    genvar unit_index;
+    genvar input_index;
+
 //addition
     wire [CHUNK_COUNT-1:0] w_sum_cout_chain;
     assign w_sum_cout_chain[CHUNK_COUNT-1] = 1'b0;  // removes warning about bit being unset. will be optimized away
     reg  [CHUNK_COUNT-1:0] r_sum_cout_chain = 0;
-    for( idx = 0; idx <= CHUNK_COUNT - 1; idx = idx + 1 ) begin
+    for( idx = 0; idx <= CHUNK_COUNT - 1; idx = idx + 1 ) begin : sum_base_loop
         if( idx != CHUNK_COUNT - 1 ) begin // !LAST_CHUNK
             assign { w_sum_cout_chain[idx], sum[idx*ALU_WIDTH+:ALU_WIDTH] } = { 1'b0, I1[idx*ALU_WIDTH+:ALU_WIDTH] } + { 1'b0, r_input[idx*ALU_WIDTH+:ALU_WIDTH] } + (idx == 0 ? 1'b0 : r_sum_cout_chain[idx-1]);
         end else begin    // == LAST_CHUNK
@@ -90,7 +93,7 @@ module math_pipelined
     wire [CHUNK_COUNT-1:0] w_sub_cout_chain;
     assign w_sub_cout_chain[CHUNK_COUNT-1] = 1'b0;  // removes warning about bit being unset. will be optimized away
     reg  [CHUNK_COUNT-1:0] r_sub_cout_chain = 0;
-    for( idx = 0; idx <= CHUNK_COUNT - 1; idx = idx + 1 ) begin
+    for( idx = 0; idx <= CHUNK_COUNT - 1; idx = idx + 1 ) begin : sub_base_loop
         if( idx != CHUNK_COUNT - 1 ) begin // !LAST_CHUNK
             assign { w_sub_cout_chain[idx], sub[idx*ALU_WIDTH+:ALU_WIDTH] } = { 1'b0, I1[idx*ALU_WIDTH+:ALU_WIDTH] } - { 1'b0, r_input[idx*ALU_WIDTH+:ALU_WIDTH] } - (idx == 0 ? 1'b0 : r_sub_cout_chain[idx-1]);
         end else begin    // == LAST_CHUNK
@@ -110,35 +113,33 @@ module math_pipelined
     localparam CMP_VECTOR_SIZE      = f_NaryRecursionGetVectorSize( CHUNK_COUNT, CMP_LUT_WIDTH );   // use the operator input width to find how many units are needed
     reg [CHUNK_COUNT+CMP_VECTOR_SIZE-1:0] r_cmp = 0;
     `define OPERATION &
-    `define UNUSED_VALUE 1'b1;
+    `define UNUSED_VALUE 1'b1
     // take sections of 'I1' & 'I2' then perform the operation on them.
     // then store the result in a register for each section.
-    always @( posedge clk ) begin
-        for( idx = 0; idx <= CHUNK_COUNT - 1; idx = idx + 1 ) begin
-            if( idx != CHUNK_COUNT - 1 ) begin // !LAST_CHUNK
-                r_cmp[idx] <= I1[idx*ALU_WIDTH+:ALU_WIDTH] `OPERATION I2[idx*ALU_WIDTH+:ALU_WIDTH];             // edit operation here
-            end else begin    // == LAST_CHUNK
-                r_cmp[idx] <= I1[idx*ALU_WIDTH+:LAST_CHUNK_SIZE] `OPERATION I2[idx*ALU_WIDTH+:LAST_CHUNK_SIZE]; // edit operation here
-            end
+    for( idx = 0; idx <= CHUNK_COUNT - 1; idx = idx + 1 ) begin : CMP_base_loop
+        if( idx != (CHUNK_COUNT - 1) ) begin // !LAST_CHUNK
+            always @( posedge clk ) r_cmp[idx] <= `OPERATION{ I1[idx*ALU_WIDTH+:ALU_WIDTH], I2[idx*ALU_WIDTH+:ALU_WIDTH] };// edit operation here
+        end else begin    // == LAST_CHUNK
+            always @( posedge clk ) r_cmp[idx] <= `OPERATION{ I1[idx*ALU_WIDTH+:LAST_CHUNK_SIZE], I2[idx*ALU_WIDTH+:LAST_CHUNK_SIZE] };// edit operation here
         end
     end
-    genvar unit_index, input_index;
     generate
         // loop through each unit and assign the in and outs
-        for( unit_index = 0; unit_index < CMP_VECTOR_SIZE; unit_index = unit_index + 1) begin
+        for( unit_index = 0; unit_index < CMP_VECTOR_SIZE; unit_index = unit_index + 1) begin : CMP_unit_loop
             // make the input wires for this unit   
             wire [CMP_LUT_WIDTH-1:0] unit_inputs;
-            // assign the inputs to their proper place
-            for( input_index = 0; input_index != CMP_LUT_WIDTH; input_index = input_index+1 ) begin
+            // assign the inputs to their proper place, unused inputs should be optimized away when set properly
+            for( input_index = 0; input_index != CMP_LUT_WIDTH; input_index = input_index+1 ) begin : CMP_input_loop
                 if( f_NaryRecursionGetUnitInputAddress(CHUNK_COUNT, CMP_LUT_WIDTH, unit_index, input_index) != ~0 )
-                    assign unit_inputs[input_index] = r_cmp[f_TailRecursionGetUnitInputAddress(CHUNK_COUNT, CMP_LUT_WIDTH, unit_index, input_index)];
+                    assign unit_inputs[input_index] = r_cmp[f_NaryRecursionGetUnitInputAddress(CHUNK_COUNT, CMP_LUT_WIDTH, unit_index, input_index)];
                 else
-                    assign unit_input[input_index] = `UNUSED_VALUE;
+                    assign unit_inputs[input_index] = `UNUSED_VALUE;
             end
             // perform the function and store the output
             always @( posedge clk ) r_cmp[CHUNK_COUNT+unit_index] <= & unit_inputs;  // edit operation here
         end
-        `undef input_size
+        `undef OPERATION
+        `undef UNUSED_VALUE
     endgenerate
 
 endmodule
