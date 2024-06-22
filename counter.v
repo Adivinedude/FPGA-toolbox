@@ -84,6 +84,7 @@ module counter_with_strobe
 
     wire                trigger;
     assign trigger = counter_ff == reset_value;
+    
     always @( posedge clk ) begin
         if( rst )
             counter_ff <= 'd1;

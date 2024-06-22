@@ -122,20 +122,17 @@ module math_pipelined
             always @( posedge clk ) r_cmp[idx] <= `OPERATION{ I1[idx*ALU_WIDTH+:LAST_CHUNK_SIZE], I2[idx*ALU_WIDTH+:LAST_CHUNK_SIZE] };// edit operation here
         end
     end
-    generate
         // loop through each unit and assign the in and outs
         for( unit_index = 0; unit_index < CMP_VECTOR_SIZE; unit_index = unit_index + 1) begin : CMP_unit_loop
             // make the input wires for this unit   
             wire [f_NaryRecursionGetUnitWidth(CHUNK_COUNT, CMP_LUT_WIDTH, unit_index)-1:0] unit_inputs;
-            // assign the inputs to their proper place, unused inputs should be optimized away when set properly
-            for( input_index = 0; input_index != CMP_LUT_WIDTH; input_index = input_index+1 ) begin : CMP_input_loop
-                if( f_NaryRecursionGetUnitInputAddress(CHUNK_COUNT, CMP_LUT_WIDTH, unit_index, input_index) != ~0 )
+            // assign the inputs to their proper place
+            for( input_index = f_NaryRecursionGetUnitWidth(CHUNK_COUNT, CMP_LUT_WIDTH, unit_index) - 1; input_index != ~0; input_index = input_index-1 ) begin : CMP_input_loop
                     assign unit_inputs[input_index] = r_cmp[f_NaryRecursionGetUnitInputAddress(CHUNK_COUNT, CMP_LUT_WIDTH, unit_index, input_index)];
             end
             // perform the function and store the output
-            always @( posedge clk ) r_cmp[CHUNK_COUNT+unit_index] <= & unit_inputs;  // edit operation here
+            always @( posedge clk ) r_cmp[CHUNK_COUNT+unit_index] <= `OPERATION unit_inputs;  // edit operation here
         end
         `undef OPERATION
-    endgenerate
 
 endmodule
