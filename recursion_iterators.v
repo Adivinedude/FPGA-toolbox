@@ -184,15 +184,15 @@ endfunction
     //                                              |
     //                                            trigger
 
-//  f_NaryRecursionVectorSize - Returns the number of LUT needed to build structure
+//  f_NaryRecursionGetVectorSize - Returns the number of LUT needed to build structure
 //  base        - Total number of input bits to operate on
 //  lut_width   - Maximum width of the LUT used.
 //  rt          - Set to 0zero when calling this function, used internal, exposed for recursion property's
 //
-// First Call f_NaryRecursionVectorSize(CHUNK_COUNT, LUT_WIDTH, 0 );
-function automatic [7:0] f_NaryRecursionVectorSize;
+// First Call f_NaryRecursionGetVectorSize(CHUNK_COUNT, LUT_WIDTH, 0 );
+function automatic [7:0] f_NaryRecursionGetVectorSize;
     input [7:0] base, lut_width;         
-    f_NaryRecursionVectorSize=iterator_NaryRecursionVectorSize(base, lut_width, 0);
+    f_NaryRecursionGetVectorSize=iterator_NaryRecursionVectorSize(base, lut_width, 0);
 endfunction
 function automatic [7:0] iterator_NaryRecursionVectorSize;
     input [7:0] base, lut_width, rt;   
@@ -208,7 +208,7 @@ function automatic [7:0] iterator_NaryRecursionVectorSize;
                     ? base / lut_width
                     : (base / lut_width) + 1));
 endfunction
-    // initial begin:test_NaryRecursionVectorSize integer idx;$display("f_NaryRecursionVectorSize()");for(idx=2;idx<=10;idx=idx+1)begin $display("\t\t\t:10 lut_width:%d cmp_width:%d",idx,f_NaryRecursionVectorSize(10,idx));end end
+    // initial begin:test_NaryRecursionVectorSize integer idx;$display("f_NaryRecursionGetVectorSize()");for(idx=2;idx<=10;idx=idx+1)begin $display("\t\t\t:10 lut_width:%d cmp_width:%d",idx,f_NaryRecursionGetVectorSize(10,idx));end end
 
 // f_NaryRecursionGetLastUnitWidth - Returns the total number of inputs for unit requested
 //  base        - Total number of input bits to compare

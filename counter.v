@@ -77,8 +77,8 @@ module counter_with_strobe
     (
         .clk(   clk ),
         .ce(    enable ),
-        .d(     counter_ff ),
-        .i(     'd1 ),
+        .I1(    counter_ff ),
+        .I2(    'd1 ),
         .sum(   w_counter_ff )
     );
 
