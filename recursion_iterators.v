@@ -315,8 +315,8 @@ function automatic [7:0] iterator_NaryRecursionGetUnitInputAddress;
         iterator_NaryRecursionGetUnitInputAddress =
             (units_on_this_depth <= unit_index)
             ? iterator_NaryRecursionGetUnitInputAddress( units_on_this_depth, unit_width, unit_index-units_on_this_depth, input_index, start_index + base_width)
-            : unit_index * unit_width + input_index + start_index;
+            : unit_index * unit_width + input_index + start_index; // need to add error condition here!!!
     end
         
 endfunction
-    // initial begin:test_NaryRecursionGetUnitInputAddress integer unit_index,input_index;$display("f_NaryRecursionGetUnitInputAddress");for(unit_index=0;unit_index<3;unit_index=unit_index+1)for( input_index=0;input_index<4;input_index=input_index+1)$display("unit:%d input:%d address:%d",unit_index,input_index,f_NaryRecursionGetUnitInputAddress(10,4,unit_index,input_index));end
+    initial begin:test_NaryRecursionGetUnitInputAddress integer unit_index,input_index;$display("f_NaryRecursionGetUnitInputAddress");for(unit_index=0;unit_index<3;unit_index=unit_index+1)for( input_index=0;input_index<4;input_index=input_index+1)$display("unit:%d input:%d address:%d",unit_index,input_index,f_NaryRecursionGetUnitInputAddress(10,4,unit_index,input_index));end
