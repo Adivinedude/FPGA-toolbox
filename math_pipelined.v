@@ -35,7 +35,7 @@ module math_pipelined
     )
     (
         input   wire                clk,
-        input   wire                ce,
+        // input   wire                ce,
         input   wire    [WIDTH-1:0] I1,
         input   wire    [WIDTH-1:0] I2,
         input   wire    [WIDTH-1:0] I3,
@@ -68,15 +68,6 @@ module math_pipelined
     // find the size of the last chunk needed to contain the counter.
     localparam LAST_CHUNK_SIZE = WIDTH % ALU_WIDTH == 0 ? ALU_WIDTH : WIDTH % ALU_WIDTH;
 
-    reg  [WIDTH-1:0] r_input = 0;
-    always @( posedge clk ) begin
-        if( ce ) begin
-            r_input <= I2;
-        end else begin
-            r_input <= 0;
-        end
-    end
-
     genvar idx;
     genvar unit_index;
     genvar input_index;
@@ -87,17 +78,17 @@ module math_pipelined
     reg  [CHUNK_COUNT-1:0] r_sum_cout_chain = 0;
     for( idx = 0; idx <= CHUNK_COUNT - 1; idx = idx + 1 ) begin : sum_base_loop
         if( idx != CHUNK_COUNT - 1 ) begin // !LAST_CHUNK
-            assign { w_sum_cout_chain[idx], sum[idx*ALU_WIDTH+:ALU_WIDTH] } = { 1'b0, I1[idx*ALU_WIDTH+:ALU_WIDTH] } + { 1'b0, r_input[idx*ALU_WIDTH+:ALU_WIDTH] } + (idx == 0 ? 1'b0 : r_sum_cout_chain[idx-1]);
+            assign { w_sum_cout_chain[idx], sum[idx*ALU_WIDTH+:ALU_WIDTH] } = { 1'b0, I1[idx*ALU_WIDTH+:ALU_WIDTH] } + { 1'b0, I2[idx*ALU_WIDTH+:ALU_WIDTH] } + (idx == 0 ? 1'b0 : r_sum_cout_chain[idx-1]);
         end else begin    // == LAST_CHUNK
-            assign sum[WIDTH-1:WIDTH-LAST_CHUNK_SIZE] = I1[WIDTH-1:WIDTH-LAST_CHUNK_SIZE] + { 1'b0, r_input[WIDTH-1:WIDTH-LAST_CHUNK_SIZE] } + (idx == 0 ? 1'b0 : r_sum_cout_chain[idx-1]);
+            assign sum[WIDTH-1:WIDTH-LAST_CHUNK_SIZE] = I1[WIDTH-1:WIDTH-LAST_CHUNK_SIZE] + { 1'b0, I2[WIDTH-1:WIDTH-LAST_CHUNK_SIZE] } + (idx == 0 ? 1'b0 : r_sum_cout_chain[idx-1]);
         end
     end 
     always @( posedge clk ) begin
-        if( ce ) begin
-            r_sum_cout_chain <= 0;
-        end else begin
+        // if( ce ) begin
+        //     r_sum_cout_chain <= 0;
+        // end else begin
             r_sum_cout_chain <= w_sum_cout_chain;
-        end
+        // end
     end
 
 //subtraction
@@ -106,17 +97,17 @@ module math_pipelined
     reg  [CHUNK_COUNT-1:0] r_sub_cout_chain = 0;
     for( idx = 0; idx <= CHUNK_COUNT - 1; idx = idx + 1 ) begin : sub_base_loop
         if( idx != CHUNK_COUNT - 1 ) begin // !LAST_CHUNK
-            assign { w_sub_cout_chain[idx], sub[idx*ALU_WIDTH+:ALU_WIDTH] } = { 1'b0, I1[idx*ALU_WIDTH+:ALU_WIDTH] } - { 1'b0, r_input[idx*ALU_WIDTH+:ALU_WIDTH] } - (idx == 0 ? 1'b0 : r_sub_cout_chain[idx-1]);
+            assign { w_sub_cout_chain[idx], sub[idx*ALU_WIDTH+:ALU_WIDTH] } = { 1'b0, I1[idx*ALU_WIDTH+:ALU_WIDTH] } - { 1'b0, I2[idx*ALU_WIDTH+:ALU_WIDTH] } - (idx == 0 ? 1'b0 : r_sub_cout_chain[idx-1]);
         end else begin    // == LAST_CHUNK
-            assign sub[WIDTH-1:WIDTH-LAST_CHUNK_SIZE] = I1[WIDTH-1:WIDTH-LAST_CHUNK_SIZE] - { 1'b0, r_input[WIDTH-1:WIDTH-LAST_CHUNK_SIZE] } - (idx == 0 ? 1'b0 : r_sub_cout_chain[idx-1]);
+            assign sub[WIDTH-1:WIDTH-LAST_CHUNK_SIZE] = I1[WIDTH-1:WIDTH-LAST_CHUNK_SIZE] - { 1'b0, I2[WIDTH-1:WIDTH-LAST_CHUNK_SIZE] } - (idx == 0 ? 1'b0 : r_sub_cout_chain[idx-1]);
         end
     end 
     always @( posedge clk ) begin
-        if( ce ) begin
-            r_sub_cout_chain <= 0;
-        end else begin
+        // if( ce ) begin
+        //     r_sub_cout_chain <= 0;
+        // end else begin
             r_sub_cout_chain <= w_sub_cout_chain;
-        end
+        // end
     end
 
 //gate_and

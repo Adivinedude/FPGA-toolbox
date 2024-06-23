@@ -221,21 +221,41 @@ function automatic integer f_NaryRecursionGetUnitWidth;
     input integer base, lut_width, unit;
     f_NaryRecursionGetUnitWidth=iterator_NaryRecursionGetUnitWidth(base, lut_width, unit, 0);
 endfunction
+// now builds properly in IVerilog, but not using SBY.
+// going to try to rewrite this. rewrite worked. code builds in all 3 tools, Gowin, iverilog, Yosys
 function automatic integer iterator_NaryRecursionGetUnitWidth;
-`ifndef FORMAL
     input integer base, lut_width, unit, results;
     `define next_level_unit_count (base / lut_width * lut_width == base ? base / lut_width : base / lut_width + 1)
-    iterator_NaryRecursionGetUnitWidth = 
-        (base == 1 )
-            ? 0 // overflow condition, requested unit not in range, width = 0 is a valid answer;
-            : (results + `next_level_unit_count) <= unit    // requested unit is on a different iteration, proceed to the next iteration
-                ? iterator_NaryRecursionGetUnitWidth(`next_level_unit_count,lut_width,unit,results + `next_level_unit_count)
-                // requested unit is on this iteration.
-                : (unit - results ) == `next_level_unit_count-1 // if this is the last unit in this layer
-                    ? base % lut_width == 0 ? lut_width : base % lut_width  // calculate its width
-                    : lut_width;    // its a full unit
+    begin
+        // iterator_NaryRecursionGetUnitWidth = 
+        //     (base == 1 )
+        //         ? 0 // overflow condition, requested unit not in range, width = 0 is a valid answer;
+        //         : (results + `next_level_unit_count) <= unit    // requested unit is on a different iteration, proceed to the next iteration
+        //             ? iterator_NaryRecursionGetUnitWidth(`next_level_unit_count,lut_width,unit,results + `next_level_unit_count)
+        //             // requested unit is on this iteration.
+        //             : (unit - results ) == `next_level_unit_count-1 // if this is the last unit in this layer
+        //                 ? base % lut_width == 0 ? lut_width : base % lut_width  // calculate its width
+        //                 : lut_width;    // its a full unit
+        for (iterator_NaryRecursionGetUnitWidth=0; base>0; iterator_NaryRecursionGetUnitWidth=iterator_NaryRecursionGetUnitWidth+1) begin
+            if( base == 1 ) begin
+                iterator_NaryRecursionGetUnitWidth = 0;
+                base = 0;
+            end else begin
+                if( (results + `next_level_unit_count) <= unit ) begin
+                    base = `next_level_unit_count;
+                    results = results + `next_level_unit_count;
+                end else begin
+                    base = 0;
+                    if( (unit - results ) == `next_level_unit_count-1 ) begin
+                        iterator_NaryRecursionGetUnitWidth = base % lut_width == 0 ? lut_width : base % lut_width;
+                    end else begin
+                        iterator_NaryRecursionGetUnitWidth = lut_width;
+                    end
+                end
+            end
+        end
+    end
     `undef next_level_unit_count 
-`endif    
 endfunction
     // initial begin:test_NaryRecursionGetLastUnitWidth integer unit_index, test_lut_width;$display("test_NaryRecursionGetLastUnitWidth()");for(test_lut_width=2; test_lut_width < 5; test_lut_width = test_lut_width + 1)for(unit_index=0; unit_index < 11; unit_index = unit_index + 1)$display("rt:%d",f_NaryRecursionGetUnitWidth(10,test_lut_width,unit_index));end
 

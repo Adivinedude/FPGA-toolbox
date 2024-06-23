@@ -77,9 +77,9 @@ module counter_with_strobe
     math_pipelined #(.WIDTH(WIDTH), .LATENCY(LATENCY)) counter_plus_plus 
     (
         .clk(   clk ),
-        .ce(    enable ),
+        // .ce(    enable ),
         .I1(    counter_ff ),
-        .I2(    'd1 ),
+        .I2(    enable ),
         .I3(    reset_value ),
         .sum(   w_counter_ff ),
         .cmp_eq( trigger )
@@ -91,7 +91,7 @@ module counter_with_strobe
             counter_ff <= w_counter_ff;
             if( enable ) begin
                 if( trigger )
-                    counter_ff <= 'd0;
+                    counter_ff <= 'd1;
             end
         end
     end
