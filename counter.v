@@ -73,18 +73,17 @@ module counter_with_strobe
 
     reg     [WIDTH-1:0] counter_ff = 'd1;
     wire    [WIDTH-1:0] w_counter_ff;
+    wire                trigger;
     math_pipelined #(.WIDTH(WIDTH), .LATENCY(LATENCY)) counter_plus_plus 
     (
         .clk(   clk ),
         .ce(    enable ),
         .I1(    counter_ff ),
         .I2(    'd1 ),
-        .sum(   w_counter_ff )
-    );
-
-    wire                trigger;
-    assign trigger = counter_ff == reset_value;
-    
+        .I3(    reset_value ),
+        .sum(   w_counter_ff ),
+        .cmp_eq( trigger )
+    );   
     always @( posedge clk ) begin
         if( rst )
             counter_ff <= 'd1;
