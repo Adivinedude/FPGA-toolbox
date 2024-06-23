@@ -48,7 +48,7 @@ module math_pipelined
         output  wire                cmp_neq
     );
     //  sum         = I1 + I2
-    //  sub         = I1 + I2
+    //  sub         = I1 - I2
     //  gate_and    = &I1
     //  gate_or     = |I1
     //  gate_xor    = ^I1
@@ -206,12 +206,17 @@ module math_pipelined
     `undef OPERATION
 
 //cmp_eq
-    localparam CMP_LUT_WIDTH =      f_TailRecursionGetUnitWidthForLatency(CHUNK_COUNT, LATENCY); // use the maximum 'latency' to find the comparators unit width
+    localparam CMP_LUT_WIDTH =      f_TailRecursionGetUnitWidthForLatency(CHUNK_COUNT, LATENCY > 1 ? LATENCY - 1 : 1); // use the maximum 'latency' to find the comparators unit width
     localparam CMP_REG_WIDTH =      f_TailRecursionGetVectorSize(CHUNK_COUNT, CMP_LUT_WIDTH); // use the comparators width to find how many units are needed
     localparam CMP_LAST_LUT_WIDTH = f_TailRecursionGetLastUnitWidth(CHUNK_COUNT, CMP_LUT_WIDTH); // find the width of the last unit.
  
     reg [CHUNK_COUNT+CMP_REG_WIDTH-1:0] comparator = 0;
-    assign cmp_eq = comparator[CHUNK_COUNT+CMP_REG_WIDTH-1];
+    // Bug fix - the cmp_eq will be valid 1 clock after the propagation chain has completed. throwing off all the timing by 1 additional clock.
+    if( LATENCY > 1) begin
+        assign cmp_eq = comparator[CHUNK_COUNT+CMP_REG_WIDTH-1];
+    end else begin
+        assign cmp_eq = I1 == I3;
+    end
 
     // take sections of the I1 and I3 then perform the operation on them.
     // then store the result in a register for each section.
