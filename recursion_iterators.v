@@ -223,38 +223,17 @@ function automatic integer f_NaryRecursionGetUnitWidth;
 endfunction
 function automatic integer iterator_NaryRecursionGetUnitWidth;
     input integer base, lut_width, unit, results;
-    //integer next_level_unit_count;
-    // begin : block_NaryRecursionGetUnitWidth
-        `define next_level_unit_count (base / lut_width * lut_width == base ? base / lut_width : base / lut_width + 1)
-    //     //$display("\tbase:%d lut_width:%d unit:%d results:%d next:%d", base, lut_width, unit, results, next_level_unit_count);
-    //     if( base == 1 )
-    //         iterator_NaryRecursionGetUnitWidth = 0;    // overflow condition, requested unit not in range, width = 0 is a valid answer;
-    //     else begin
-    //         if( (results + `next_level_unit_count) <= unit) begin
-    //             // requested unit is on a different iteration, proceed to the next iteration
-    //             iterator_NaryRecursionGetUnitWidth = iterator_NaryRecursionGetUnitWidth(
-    //                     `next_level_unit_count,
-    //                     lut_width,
-    //                     unit,
-    //                     results + `next_level_unit_count);
-    //         end else begin
-    //             // requested unit is on this iteration.
-    //             if( (unit - results ) == `next_level_unit_count-1 )
-    //                 iterator_NaryRecursionGetUnitWidth = base % lut_width == 0 ? lut_width : base % lut_width;
-    //             else
-    //                 iterator_NaryRecursionGetUnitWidth = lut_width;
-    //         end
-    //     end 
-    //     `undef next_level_unit_count     
-    // end
+    `define next_level_unit_count (base / lut_width * lut_width == base ? base / lut_width : base / lut_width + 1)
     iterator_NaryRecursionGetUnitWidth = 
         (base == 1 )
-            ? 0
-            : (results + `next_level_unit_count) <= unit
+            ? 0 // overflow condition, requested unit not in range, width = 0 is a valid answer;
+            : (results + `next_level_unit_count) <= unit    // requested unit is on a different iteration, proceed to the next iteration
                 ? iterator_NaryRecursionGetUnitWidth(`next_level_unit_count,lut_width,unit,results + `next_level_unit_count)
-                : (unit - results ) == `next_level_unit_count-1
-                    ? base % lut_width == 0 ? lut_width : base % lut_width
-                    : lut_width;
+                // requested unit is on this iteration.
+                : (unit - results ) == `next_level_unit_count-1 // if this is the last unit in this layer
+                    ? base % lut_width == 0 ? lut_width : base % lut_width  // calculate its width
+                    : lut_width;    // its a full unit
+    `undef next_level_unit_count     
 endfunction
     // initial begin:test_NaryRecursionGetLastUnitWidth integer unit_index, test_lut_width;$display("test_NaryRecursionGetLastUnitWidth()");for(test_lut_width=2; test_lut_width < 5; test_lut_width = test_lut_width + 1)for(unit_index=0; unit_index < 11; unit_index = unit_index + 1)$display("rt:%d",f_NaryRecursionGetUnitWidth(10,test_lut_width,unit_index));end
 
@@ -317,7 +296,7 @@ function automatic integer f_NaryRecursionGetUnitInputAddress;
     f_NaryRecursionGetUnitInputAddress = iterator_NaryRecursionGetUnitInputAddress(cmp_width, lut_width, unit_index, input_index, 0);
 endfunction
 function automatic integer iterator_NaryRecursionGetUnitInputAddress;
-    input integer base_width, unit_width, unit_index, input_index,    start_index;
+    input integer base_width, unit_width, unit_index, input_index, start_index;
     `define units_on_this_depth (base_width / unit_width * unit_width == base_width ? base_width / unit_width : base_width / unit_width + 1)
     begin
         iterator_NaryRecursionGetUnitInputAddress =

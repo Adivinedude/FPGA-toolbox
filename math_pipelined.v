@@ -109,30 +109,88 @@ module math_pipelined
     end
 
 //gate_and
-    localparam CMP_LUT_WIDTH        = f_NaryRecursionGetUnitWidthForLatency( CHUNK_COUNT, LATENCY );// use the maximum 'latency' to find the operator unit input width
-    localparam CMP_VECTOR_SIZE      = f_NaryRecursionGetVectorSize( CHUNK_COUNT, CMP_LUT_WIDTH );   // use the operator input width to find how many units are needed
-    reg [CHUNK_COUNT+CMP_VECTOR_SIZE-1:0] r_cmp = 0;
+    localparam GATE_AND_LUT_WIDTH        = f_NaryRecursionGetUnitWidthForLatency( CHUNK_COUNT, LATENCY );// use the maximum 'latency' to find the operator unit input width
+    localparam GATE_AND_VECTOR_SIZE      = f_NaryRecursionGetVectorSize( CHUNK_COUNT, GATE_AND_LUT_WIDTH );   // use the operator input width to find how many units are needed
+    reg [CHUNK_COUNT+GATE_AND_VECTOR_SIZE-1:0] r_GATE_AND = 0;
+    assign gate_and = r_GATE_AND[CHUNK_COUNT+GATE_AND_VECTOR_SIZE-1];
     `define OPERATION &
     // take sections of 'I1' & 'I2' then perform the operation on them.
     // then store the result in a register for each section.
-    for( idx = 0; idx <= CHUNK_COUNT - 1; idx = idx + 1 ) begin : CMP_base_loop
+    for( idx = 0; idx <= CHUNK_COUNT - 1; idx = idx + 1 ) begin : GATE_AND_base_loop
         if( idx != (CHUNK_COUNT - 1) ) begin // !LAST_CHUNK
-            always @( posedge clk ) r_cmp[idx] <= `OPERATION{ I1[idx*ALU_WIDTH+:ALU_WIDTH], I2[idx*ALU_WIDTH+:ALU_WIDTH] };// edit operation here
+            always @( posedge clk ) r_GATE_AND[idx] <= `OPERATION I1[idx*ALU_WIDTH+:ALU_WIDTH];// edit operation here
         end else begin    // == LAST_CHUNK
-            always @( posedge clk ) r_cmp[idx] <= `OPERATION{ I1[idx*ALU_WIDTH+:LAST_CHUNK_SIZE], I2[idx*ALU_WIDTH+:LAST_CHUNK_SIZE] };// edit operation here
+            always @( posedge clk ) r_GATE_AND[idx] <= `OPERATION I1[idx*ALU_WIDTH+:LAST_CHUNK_SIZE];// edit operation here
         end
     end
         // loop through each unit and assign the in and outs
-        for( unit_index = 0; unit_index < CMP_VECTOR_SIZE; unit_index = unit_index + 1) begin : CMP_unit_loop
+        for( unit_index = 0; unit_index < GATE_AND_VECTOR_SIZE; unit_index = unit_index + 1) begin : GATE_AND_unit_loop
             // make the input wires for this unit   
-            wire [f_NaryRecursionGetUnitWidth(CHUNK_COUNT, CMP_LUT_WIDTH, unit_index)-1:0] unit_inputs;
+            wire [f_NaryRecursionGetUnitWidth(CHUNK_COUNT, GATE_AND_LUT_WIDTH, unit_index)-1:0] unit_inputs;
             // assign the inputs to their proper place
-            for( input_index = f_NaryRecursionGetUnitWidth(CHUNK_COUNT, CMP_LUT_WIDTH, unit_index) - 1; input_index != ~0; input_index = input_index-1 ) begin : CMP_input_loop
-                    assign unit_inputs[input_index] = r_cmp[f_NaryRecursionGetUnitInputAddress(CHUNK_COUNT, CMP_LUT_WIDTH, unit_index, input_index)];
+            for( input_index = f_NaryRecursionGetUnitWidth(CHUNK_COUNT, GATE_AND_LUT_WIDTH, unit_index) - 1; input_index != ~0; input_index = input_index-1 ) begin : GATE_AND_input_loop
+                    assign unit_inputs[input_index] = r_GATE_AND[f_NaryRecursionGetUnitInputAddress(CHUNK_COUNT, GATE_AND_LUT_WIDTH, unit_index, input_index)];
             end
             // perform the function and store the output
-            always @( posedge clk ) r_cmp[CHUNK_COUNT+unit_index] <= `OPERATION unit_inputs;  // edit operation here
+            always @( posedge clk ) r_GATE_AND[CHUNK_COUNT+unit_index] <= `OPERATION unit_inputs;  // edit operation here
         end
         `undef OPERATION
 
+//gate_or
+    localparam GATE_OR_LUT_WIDTH        = f_NaryRecursionGetUnitWidthForLatency( CHUNK_COUNT, LATENCY );// use the maximum 'latency' to find the operator unit input width
+    localparam GATE_OR_VECTOR_SIZE      = f_NaryRecursionGetVectorSize( CHUNK_COUNT, GATE_OR_LUT_WIDTH );   // use the operator input width to find how many units are needed
+    reg [CHUNK_COUNT+GATE_OR_VECTOR_SIZE-1:0] r_GATE_OR = 0;
+    assign gate_or = r_GATE_OR[CHUNK_COUNT+GATE_OR_VECTOR_SIZE-1];
+
+    `define OPERATION |
+    // take sections of 'I1' & 'I2' then perform the operation on them.
+    // then store the result in a register for each section.
+    for( idx = 0; idx <= CHUNK_COUNT - 1; idx = idx + 1 ) begin : GATE_OR_base_loop
+        if( idx != (CHUNK_COUNT - 1) ) begin // !LAST_CHUNK
+            always @( posedge clk ) r_GATE_OR[idx] <= `OPERATION I1[idx*ALU_WIDTH+:ALU_WIDTH];// edit operation here
+        end else begin    // == LAST_CHUNK
+            always @( posedge clk ) r_GATE_OR[idx] <= `OPERATION I1[idx*ALU_WIDTH+:LAST_CHUNK_SIZE];// edit operation here
+        end
+    end
+        // loop through each unit and assign the in and outs
+        for( unit_index = 0; unit_index < GATE_OR_VECTOR_SIZE; unit_index = unit_index + 1) begin : GATE_OR_unit_loop
+            // make the input wires for this unit   
+            wire [f_NaryRecursionGetUnitWidth(CHUNK_COUNT, GATE_OR_LUT_WIDTH, unit_index)-1:0] unit_inputs;
+            // assign the inputs to their proper place
+            for( input_index = f_NaryRecursionGetUnitWidth(CHUNK_COUNT, GATE_OR_LUT_WIDTH, unit_index) - 1; input_index != ~0; input_index = input_index-1 ) begin : GATE_OR_input_loop
+                    assign unit_inputs[input_index] = r_GATE_OR[f_NaryRecursionGetUnitInputAddress(CHUNK_COUNT, GATE_OR_LUT_WIDTH, unit_index, input_index)];
+            end
+            // perform the function and store the output
+            always @( posedge clk ) r_GATE_OR[CHUNK_COUNT+unit_index] <= `OPERATION unit_inputs;  // edit operation here
+        end
+        `undef OPERATION
+
+//gate_xor
+    localparam GATE_XOR_LUT_WIDTH        = f_NaryRecursionGetUnitWidthForLatency( CHUNK_COUNT, LATENCY );// use the maximum 'latency' to find the operator unit input width
+    localparam GATE_XOR_VECTOR_SIZE      = f_NaryRecursionGetVectorSize( CHUNK_COUNT, GATE_XOR_LUT_WIDTH );   // use the operator input width to find how many units are needed
+    reg [CHUNK_COUNT+GATE_XOR_VECTOR_SIZE-1:0] r_GATE_XOR = 0;
+    assign gate_xor = r_GATE_XOR[CHUNK_COUNT+GATE_XOR_VECTOR_SIZE-1];
+
+    `define OPERATION ^
+    // take sections of 'I1' & 'I2' then perform the operation on them.
+    // then store the result in a register for each section.
+    for( idx = 0; idx <= CHUNK_COUNT - 1; idx = idx + 1 ) begin : GATE_XOR_base_loop
+        if( idx != (CHUNK_COUNT - 1) ) begin // !LAST_CHUNK
+            always @( posedge clk ) r_GATE_XOR[idx] <= `OPERATION I1[idx*ALU_WIDTH+:ALU_WIDTH] ;// edit operation here
+        end else begin    // == LAST_CHUNK
+            always @( posedge clk ) r_GATE_XOR[idx] <= `OPERATION I1[idx*ALU_WIDTH+:LAST_CHUNK_SIZE];// edit operation here
+        end
+    end
+        // loop through each unit and assign the in and outs
+        for( unit_index = 0; unit_index < GATE_XOR_VECTOR_SIZE; unit_index = unit_index + 1) begin : GATE_XOR_unit_loop
+            // make the input wires for this unit   
+            wire [f_NaryRecursionGetUnitWidth(CHUNK_COUNT, GATE_XOR_LUT_WIDTH, unit_index)-1:0] unit_inputs;
+            // assign the inputs to their proper place
+            for( input_index = f_NaryRecursionGetUnitWidth(CHUNK_COUNT, GATE_XOR_LUT_WIDTH, unit_index) - 1; input_index != ~0; input_index = input_index-1 ) begin : GATE_XOR_input_loop
+                    assign unit_inputs[input_index] = r_GATE_XOR[f_NaryRecursionGetUnitInputAddress(CHUNK_COUNT, GATE_XOR_LUT_WIDTH, unit_index, input_index)];
+            end
+            // perform the function and store the output
+            always @( posedge clk ) r_GATE_XOR[CHUNK_COUNT+unit_index] <= `OPERATION unit_inputs;  // edit operation here
+        end
+        `undef OPERATION
 endmodule
