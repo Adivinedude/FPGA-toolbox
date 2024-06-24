@@ -30,8 +30,8 @@
 module counter_with_strobe
     #( 
         `ifdef FORMAL
-            parameter WIDTH     = 4,
-            parameter LATENCY   = 4
+            parameter WIDTH     = 8,
+            parameter LATENCY   = 1
         `else
             parameter WIDTH     = 16,
             parameter LATENCY   = 16
@@ -158,15 +158,16 @@ module counter_with_strobe
                 if( !past_valid_1 || rst )
                     assume(!enable);
                 else begin
-                    if( !ready )
+                    if( !$past(ready) )
                         assume( !enable );
                     else begin
-                        if( enable_off_counter >= 2 )
+                        if( enable_off_counter >= 3 )
                             assume( enable );
                     end
                 end
-
             end
+            //force 'enable' to be HIGH for 1 clock cycle, and prevent enable from being HIGH 1 clock after reset
+            always @( posedge clk ) if( past_valid && ($past(enable) || $past(rst)) ) assume(!enable);
     // // // // // //
     // reset_value //
     // // // // // //
