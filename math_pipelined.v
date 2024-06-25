@@ -35,7 +35,6 @@ module math_pipelined
     )
     (
         input   wire                clk,
-        // input   wire                ce,
         input   wire    [WIDTH-1:0] I1,
         input   wire    [WIDTH-1:0] I2,
         input   wire    [WIDTH-1:0] I3,
@@ -54,6 +53,9 @@ module math_pipelined
     //  gate_xor    = ^I1
     //  cmp_eq      = I1 == I3
     //  cmp_neq     = I1 != I3
+    //ToDo:
+    //  cmp_greater = I1 > I3
+    //  cmp_lesser  = I1 < I3
 
     `ifndef FORMAL
         `include "./toolbox/recursion_iterators.v"
@@ -83,13 +85,7 @@ module math_pipelined
             assign sum[WIDTH-1:WIDTH-LAST_CHUNK_SIZE] = I1[WIDTH-1:WIDTH-LAST_CHUNK_SIZE] + { 1'b0, I2[WIDTH-1:WIDTH-LAST_CHUNK_SIZE] } + (idx == 0 ? 1'b0 : r_sum_cout_chain[idx-1]);
         end
     end 
-    always @( posedge clk ) begin
-        // if( ce ) begin
-        //     r_sum_cout_chain <= 0;
-        // end else begin
-            r_sum_cout_chain <= w_sum_cout_chain;
-        // end
-    end
+    always @( posedge clk ) r_sum_cout_chain <= w_sum_cout_chain;
 
 //subtraction
     wire [CHUNK_COUNT-1:0] w_sub_cout_chain;
@@ -102,21 +98,16 @@ module math_pipelined
             assign sub[WIDTH-1:WIDTH-LAST_CHUNK_SIZE] = I1[WIDTH-1:WIDTH-LAST_CHUNK_SIZE] - { 1'b0, I2[WIDTH-1:WIDTH-LAST_CHUNK_SIZE] } - (idx == 0 ? 1'b0 : r_sub_cout_chain[idx-1]);
         end
     end 
-    always @( posedge clk ) begin
-        // if( ce ) begin
-        //     r_sub_cout_chain <= 0;
-        // end else begin
-            r_sub_cout_chain <= w_sub_cout_chain;
-        // end
-    end
+    always @( posedge clk ) r_sub_cout_chain <= w_sub_cout_chain;
+        
 
 //gate_and
-    localparam GATE_AND_LUT_WIDTH        = f_NaryRecursionGetUnitWidthForLatency( CHUNK_COUNT, LATENCY );// use the maximum 'latency' to find the operator unit input width
-    localparam GATE_AND_VECTOR_SIZE      = f_NaryRecursionGetVectorSize( CHUNK_COUNT, GATE_AND_LUT_WIDTH );   // use the operator input width to find how many units are needed
+    localparam GATE_AND_LUT_WIDTH   = f_NaryRecursionGetUnitWidthForLatency( CHUNK_COUNT, LATENCY );// use the maximum 'latency' to find the operator unit input width
+    localparam GATE_AND_VECTOR_SIZE = f_NaryRecursionGetVectorSize( CHUNK_COUNT, GATE_AND_LUT_WIDTH );// use the operator input width to find how many units are needed
     reg [CHUNK_COUNT+GATE_AND_VECTOR_SIZE-1:0] r_GATE_AND = 0;
     assign gate_and = r_GATE_AND[CHUNK_COUNT+GATE_AND_VECTOR_SIZE-1];
     `define OPERATION &
-    // take sections of 'I1' & 'I2' then perform the operation on them.
+    // take sections of 'I1' then perform the operation on them.
     // then store the result in a register for each section.
     for( idx = 0; idx <= CHUNK_COUNT - 1; idx = idx + 1 ) begin : GATE_AND_base_loop
         if( idx != (CHUNK_COUNT - 1) ) begin // !LAST_CHUNK
@@ -145,7 +136,7 @@ module math_pipelined
     assign gate_or = r_GATE_OR[CHUNK_COUNT+GATE_OR_VECTOR_SIZE-1];
 
     `define OPERATION |
-    // take sections of 'I1' & 'I2' then perform the operation on them.
+    // take sections of 'I1' then perform the operation on them.
     // then store the result in a register for each section.
     for( idx = 0; idx <= CHUNK_COUNT - 1; idx = idx + 1 ) begin : GATE_OR_base_loop
         if( idx != (CHUNK_COUNT - 1) ) begin // !LAST_CHUNK
@@ -174,7 +165,7 @@ module math_pipelined
     assign gate_xor = r_GATE_XOR[CHUNK_COUNT+GATE_XOR_VECTOR_SIZE-1];
 
     `define OPERATION ^
-    // take sections of 'I1' & 'I2' then perform the operation on them.
+    // take sections of 'I1' then perform the operation on them.
     // then store the result in a register for each section.
     for( idx = 0; idx <= CHUNK_COUNT - 1; idx = idx + 1 ) begin : GATE_XOR_base_loop
         if( idx != (CHUNK_COUNT - 1) ) begin // !LAST_CHUNK
@@ -201,10 +192,10 @@ module math_pipelined
     localparam CMP_REG_WIDTH =      f_TailRecursionGetVectorSize(CHUNK_COUNT, CMP_LUT_WIDTH); // use the comparators width to find how many units are needed
     localparam CMP_LAST_LUT_WIDTH = f_TailRecursionGetLastUnitWidth(CHUNK_COUNT, CMP_LUT_WIDTH); // find the width of the last unit.
  
-    reg [CHUNK_COUNT+CMP_REG_WIDTH-1:0] comparator = 0;
+    reg [CHUNK_COUNT+CMP_REG_WIDTH-1:0] r_CMP_EQ = 0;
     // Bug fix - the cmp_eq will be valid 1 clock after the propagation chain has completed. throwing off all the timing by 1 additional clock.
     if( LATENCY > 1) begin
-        assign cmp_eq = comparator[CHUNK_COUNT+CMP_REG_WIDTH-1];
+        assign cmp_eq = r_CMP_EQ[CHUNK_COUNT+CMP_REG_WIDTH-1];
     end else begin
         assign cmp_eq = I1 == I3;
     end
@@ -213,9 +204,9 @@ module math_pipelined
     // then store the result in a register for each section.
     for( idx = 0; idx <= CHUNK_COUNT - 1; idx = idx + 1 ) begin : CMP_EQ_base_loop
         if( idx != CHUNK_COUNT - 1 ) begin // !LAST_CHUNK
-            always @( posedge clk ) comparator[idx] <= I1[idx*ALU_WIDTH+:ALU_WIDTH] == I3[idx*ALU_WIDTH+:ALU_WIDTH];
+            always @( posedge clk ) r_CMP_EQ[idx] <= I1[idx*ALU_WIDTH+:ALU_WIDTH] == I3[idx*ALU_WIDTH+:ALU_WIDTH];
         end else begin    // == LAST_CHUNK
-            always @( posedge clk ) comparator[idx] <= I1[idx*ALU_WIDTH+:LAST_CHUNK_SIZE] == I3[idx*ALU_WIDTH+:LAST_CHUNK_SIZE];
+            always @( posedge clk ) r_CMP_EQ[idx] <= I1[idx*ALU_WIDTH+:LAST_CHUNK_SIZE] == I3[idx*ALU_WIDTH+:LAST_CHUNK_SIZE];
         end
     end
     // the last unit may be a different size than the others. account for this here
@@ -229,9 +220,9 @@ module math_pipelined
         for( input_index = `input_size; input_index != ~0; input_index = input_index-1 ) begin
             // initial $display("unit_index: %d input_index:%d func:%d", unit_index, input_index, f_TailRecursionGetStructureInputAddress(CHUNK_COUNT, CMP_LUT_WIDTH, unit_index, input_index));
             assign unit_inputs[input_index] = 
-            comparator[f_TailRecursionGetUnitInputAddress(CHUNK_COUNT, CMP_LUT_WIDTH, unit_index, input_index)];
+            r_CMP_EQ[f_TailRecursionGetUnitInputAddress(CHUNK_COUNT, CMP_LUT_WIDTH, unit_index, input_index)];
         end
         // perform the function and store the output
-        always @( posedge clk ) comparator[CHUNK_COUNT+unit_index] <= &unit_inputs;
+        always @( posedge clk ) r_CMP_EQ[CHUNK_COUNT+unit_index] <= &unit_inputs;
     end
 endmodule
