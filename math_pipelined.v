@@ -188,16 +188,17 @@ module math_pipelined
     `undef OPERATION
 
 //cmp_eq
-    localparam CMP_LUT_WIDTH =      f_TailRecursionGetUnitWidthForLatency(CHUNK_COUNT, LATENCY > 1 ? LATENCY - 1 : 1); // use the maximum 'latency' to find the comparators unit width
-    localparam CMP_REG_WIDTH =      f_TailRecursionGetVectorSize(CHUNK_COUNT, CMP_LUT_WIDTH); // use the comparators width to find how many units are needed
-    localparam CMP_LAST_LUT_WIDTH = f_TailRecursionGetLastUnitWidth(CHUNK_COUNT, CMP_LUT_WIDTH); // find the width of the last unit.
+    localparam CMP_EQ_LUT_WIDTH =      f_TailRecursionGetUnitWidthForLatency(CHUNK_COUNT, LATENCY > 1 ? LATENCY - 1 : 1); // use the maximum 'latency' to find the comparators unit width
+    localparam CMP_EQ_REG_WIDTH =      f_TailRecursionGetVectorSize(CHUNK_COUNT, CMP_EQ_LUT_WIDTH); // use the comparators width to find how many units are needed
+    localparam CMP_EQ_LAST_LUT_WIDTH = f_TailRecursionGetLastUnitWidth(CHUNK_COUNT, CMP_EQ_LUT_WIDTH); // find the width of the last unit.
  
-    reg [CHUNK_COUNT+CMP_REG_WIDTH-1:0] r_CMP_EQ = 0;
-    // Bug fix - the cmp_eq will be valid 1 clock after the propagation chain has completed. throwing off all the timing by 1 additional clock.
+    reg [CHUNK_COUNT+CMP_EQ_REG_WIDTH-1:0] r_CMP_EQ = 0;
+    reg r_CMP_NEQ = 0;
     if( LATENCY > 1) begin
-        assign cmp_eq = r_CMP_EQ[CHUNK_COUNT+CMP_REG_WIDTH-1];
+        assign cmp_eq = r_CMP_EQ[CHUNK_COUNT+CMP_EQ_REG_WIDTH-1];
     end else begin
-        assign cmp_eq = I1 == I3;
+        assign cmp_eq   = I1 == I3;
+        assign cmp_neq  = I1 != I3;
     end
 
     // take sections of the I1 and I3 then perform the operation on them.
@@ -210,19 +211,21 @@ module math_pipelined
         end
     end
     // the last unit may be a different size than the others. account for this here
-    `define input_size  unit_index != (CMP_REG_WIDTH-1)?CMP_LUT_WIDTH-1:CMP_LAST_LUT_WIDTH-1
+    `define input_size  unit_index != (CMP_EQ_REG_WIDTH-1)?CMP_EQ_LUT_WIDTH-1:CMP_EQ_LAST_LUT_WIDTH-1
     // loop through each unit and assign the in and outs
-    for( unit_index = 0; unit_index < CMP_REG_WIDTH; unit_index = unit_index + 1) begin
+    for( unit_index = 0; unit_index < CMP_EQ_REG_WIDTH; unit_index = unit_index + 1) begin
         // initial $display("input_size: %d", `input_size);
         // make the input wires for this unit   
         wire [`input_size:0] unit_inputs;
         // assign the inputs to their proper place
         for( input_index = `input_size; input_index != ~0; input_index = input_index-1 ) begin
-            // initial $display("unit_index: %d input_index:%d func:%d", unit_index, input_index, f_TailRecursionGetStructureInputAddress(CHUNK_COUNT, CMP_LUT_WIDTH, unit_index, input_index));
+            // initial $display("unit_index: %d input_index:%d func:%d", unit_index, input_index, f_TailRecursionGetStructureInputAddress(CHUNK_COUNT, CMP_EQ_LUT_WIDTH, unit_index, input_index));
             assign unit_inputs[input_index] = 
-            r_CMP_EQ[f_TailRecursionGetUnitInputAddress(CHUNK_COUNT, CMP_LUT_WIDTH, unit_index, input_index)];
+            r_CMP_EQ[f_TailRecursionGetUnitInputAddress(CHUNK_COUNT, CMP_EQ_LUT_WIDTH, unit_index, input_index)];
         end
         // perform the function and store the output
         always @( posedge clk ) r_CMP_EQ[CHUNK_COUNT+unit_index] <= &unit_inputs;
+        if( unit_index == CMP_EQ_REG_WIDTH - 1 )
+            always @( posedge clk ) r_CMP_NEQ <= ~&unit_inputs;
     end
 endmodule
