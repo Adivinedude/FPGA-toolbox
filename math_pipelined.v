@@ -64,7 +64,11 @@ module math_pipelined
     `endif
     // determine the chunk width. knowing that each chunk will take 1 tick, 'width' / 'latency' will provide
     // the needed delay as specified in parameter LATENCY. protect values from base2 rounding errors
-    localparam ALU_WIDTH  = WIDTH / LATENCY * LATENCY == WIDTH ? WIDTH / LATENCY : WIDTH / LATENCY + 1; 
+    localparam ALU_WIDTH  = (LATENCY != 0) 
+        ? WIDTH / LATENCY * LATENCY == WIDTH 
+            ? WIDTH / LATENCY 
+            : WIDTH / LATENCY + 1 
+        : WIDTH; 
     // find the minimum amount of chunks needed to contain the counter
     localparam CHUNK_COUNT = WIDTH % ALU_WIDTH == 0 ? WIDTH / ALU_WIDTH : WIDTH / ALU_WIDTH + 1; 
     // find the size of the last chunk needed to contain the counter.
@@ -73,9 +77,8 @@ module math_pipelined
     genvar idx;
     genvar unit_index;
     genvar input_index;
-
-//addition
-    if( LATENCY < 1) begin
+//addition 
+    if( LATENCY == 0 ) begin
         assign sum = I1 + I2;
     end else begin
         wire [CHUNK_COUNT-1:0] w_sum_cout_chain;
@@ -92,7 +95,7 @@ module math_pipelined
     end
 
 //subtraction
-    if( LATENCY < 1) begin
+    if( LATENCY == 0 ) begin
         assign sub = I1 - I2;
     end else begin
         wire [CHUNK_COUNT-1:0] w_sub_cout_chain;
@@ -109,11 +112,11 @@ module math_pipelined
     end
 
 //gate_and
-    localparam GATE_AND_LUT_WIDTH   = f_NaryRecursionGetUnitWidthForLatency( CHUNK_COUNT, LATENCY );// use the maximum 'latency' to find the operator unit input width
-    localparam GATE_AND_VECTOR_SIZE = f_NaryRecursionGetVectorSize( CHUNK_COUNT, GATE_AND_LUT_WIDTH );// use the operator input width to find how many units are needed
-    if( LATENCY < 1) begin
+    if( LATENCY == 0 ) begin
         assign gate_and = &I1;
     end else begin
+        localparam GATE_AND_LUT_WIDTH   = f_NaryRecursionGetUnitWidthForLatency( CHUNK_COUNT, LATENCY );// use the maximum 'latency' to find the operator unit input width
+        localparam GATE_AND_VECTOR_SIZE = f_NaryRecursionGetVectorSize( CHUNK_COUNT, GATE_AND_LUT_WIDTH );// use the operator input width to find how many units are needed
         reg [CHUNK_COUNT+GATE_AND_VECTOR_SIZE-1:0] r_GATE_AND = 0;
         assign gate_and = r_GATE_AND[CHUNK_COUNT+GATE_AND_VECTOR_SIZE-1];
         `define OPERATION &
@@ -141,11 +144,11 @@ module math_pipelined
     end
 
 //gate_or
-    localparam GATE_OR_LUT_WIDTH        = f_NaryRecursionGetUnitWidthForLatency( CHUNK_COUNT, LATENCY );// use the maximum 'latency' to find the operator unit input width
-    localparam GATE_OR_VECTOR_SIZE      = f_NaryRecursionGetVectorSize( CHUNK_COUNT, GATE_OR_LUT_WIDTH );   // use the operator input width to find how many units are needed
-    if( LATENCY < 1) begin
+    if( LATENCY == 0 ) begin
         assign gate_or = |I1;
     end else begin
+        localparam GATE_OR_LUT_WIDTH        = f_NaryRecursionGetUnitWidthForLatency( CHUNK_COUNT, LATENCY );// use the maximum 'latency' to find the operator unit input width
+        localparam GATE_OR_VECTOR_SIZE      = f_NaryRecursionGetVectorSize( CHUNK_COUNT, GATE_OR_LUT_WIDTH );   // use the operator input width to find how many units are needed
         reg [CHUNK_COUNT+GATE_OR_VECTOR_SIZE-1:0] r_GATE_OR = 0;
         assign gate_or = r_GATE_OR[CHUNK_COUNT+GATE_OR_VECTOR_SIZE-1];
 
@@ -174,11 +177,11 @@ module math_pipelined
     end
 
 //gate_xor
-    localparam GATE_XOR_LUT_WIDTH        = f_NaryRecursionGetUnitWidthForLatency( CHUNK_COUNT, LATENCY );// use the maximum 'latency' to find the operator unit input width
-    localparam GATE_XOR_VECTOR_SIZE      = f_NaryRecursionGetVectorSize( CHUNK_COUNT, GATE_XOR_LUT_WIDTH );   // use the operator input width to find how many units are needed
-    if( LATENCY < 1) begin
+    if( LATENCY == 0 ) begin
         assign gate_xor = ^I1;
     end else begin
+        localparam GATE_XOR_LUT_WIDTH        = f_NaryRecursionGetUnitWidthForLatency( CHUNK_COUNT, LATENCY );// use the maximum 'latency' to find the operator unit input width
+        localparam GATE_XOR_VECTOR_SIZE      = f_NaryRecursionGetVectorSize( CHUNK_COUNT, GATE_XOR_LUT_WIDTH );   // use the operator input width to find how many units are needed
         reg [CHUNK_COUNT+GATE_XOR_VECTOR_SIZE-1:0] r_GATE_XOR = 0;
         assign gate_xor = r_GATE_XOR[CHUNK_COUNT+GATE_XOR_VECTOR_SIZE-1];
 
@@ -206,14 +209,15 @@ module math_pipelined
         `undef OPERATION
     end
 //cmp_eq
-    localparam CMP_EQ_LUT_WIDTH =      f_TailRecursionGetUnitWidthForLatency(CHUNK_COUNT, LATENCY > 1 ? LATENCY - 1 : 1); // use the maximum 'latency' to find the comparators unit width
-    localparam CMP_EQ_REG_WIDTH =      f_TailRecursionGetVectorSize(CHUNK_COUNT, CMP_EQ_LUT_WIDTH); // use the comparators width to find how many units are needed
-    localparam CMP_EQ_LAST_LUT_WIDTH = f_TailRecursionGetLastUnitWidth(CHUNK_COUNT, CMP_EQ_LUT_WIDTH); // find the width of the last unit.
  
-    if( LATENCY < 1) begin
+    if( LATENCY == 0 ) begin
         assign cmp_eq   = I1 == I3;
         assign cmp_neq  = I1 != I3;
     end else begin
+        localparam CMP_EQ_LUT_WIDTH =      f_TailRecursionGetUnitWidthForLatency(CHUNK_COUNT, LATENCY > 1 ? LATENCY - 1 : 1); // use the maximum 'latency' to find the comparators unit width
+        localparam CMP_EQ_REG_WIDTH =      f_TailRecursionGetVectorSize(CHUNK_COUNT, CMP_EQ_LUT_WIDTH); // use the comparators width to find how many units are needed
+        localparam CMP_EQ_LAST_LUT_WIDTH = f_TailRecursionGetLastUnitWidth(CHUNK_COUNT, CMP_EQ_LUT_WIDTH); // find the width of the last unit.
+        
         reg [CHUNK_COUNT+CMP_EQ_REG_WIDTH-1:0] r_CMP_EQ = 0;
         reg r_CMP_NEQ = 0;
         assign cmp_eq = r_CMP_EQ[CHUNK_COUNT+CMP_EQ_REG_WIDTH-1];

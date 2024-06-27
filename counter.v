@@ -30,11 +30,11 @@
 module counter_with_strobe
     #( 
         `ifdef FORMAL
-            parameter WIDTH     = 8,
-            parameter LATENCY   = 1
+            parameter WIDTH     = 4,
+            parameter LATENCY   = 0
         `else
-            parameter WIDTH     = 16,
-            parameter LATENCY   = 16
+            parameter WIDTH     = 4,
+            parameter LATENCY   = 0
         `endif
     )
     (
@@ -50,22 +50,22 @@ module counter_with_strobe
     // 'Used for formal verification, can be optimized away.
     // 'ready' used to indicate when enable can be 'HIGH'
     // 'valid' used to indicate when strobe may be 'HIGH'
-    reg [LATENCY:0]     ready_tracker   = 0;
-    assign              ready           = ready_tracker[LATENCY];
-    reg                 strobe_valid    = 0;
-    assign              valid           = strobe_valid;
+    reg [7:0]   ready_tracker   = 1;
+    assign      ready           = ready_tracker >= LATENCY;
+    reg         strobe_valid    = 0;
+    assign      valid           = strobe_valid;
 
     always @( posedge clk ) begin
         if( rst ) begin
-            ready_tracker <= 'd1;
+            ready_tracker <= 'd0;
             strobe_valid  <= 0;
         end else begin
             if( enable ) begin
-                ready_tracker <= 'd1;
+                ready_tracker <= 'd0;
                 if( ready )
                     strobe_valid <= 1'b1;
             end else begin
-                ready_tracker <= { ready_tracker[LATENCY-1:0], 1'b1 };
+                ready_tracker <= ready ? ready_tracker : ready_tracker + 1;
                 strobe_valid  <= 0;
             end
         end
@@ -102,7 +102,7 @@ module counter_with_strobe
         strobe_ff <= 0;   // turn strobe_ff off.
         if( enable ) begin
             if( trigger ) begin
-                strobe_ff <= 1;
+                strobe_ff <= 1'b1;
             end
         end
     end 
@@ -153,7 +153,7 @@ module counter_with_strobe
     // // // // //
     // enable   //
     // // // // //
-            //force 'enable' to be LOW when '!valid' and no more than 2 ticks when 'valid'
+            //force 'enable' to be LOW when '!ready' and no more than 2 ticks when 'ready'
             always @( posedge clk ) begin
                 if( !past_valid_1 || rst )
                     assume(!enable);
@@ -201,6 +201,8 @@ module counter_with_strobe
                             );
 
     always @( posedge clk ) cover( strobe );
+    always @( posedge clk ) cover( ready );
+    always @( posedge clk ) cover( valid );
 
 `endif
 endmodule
