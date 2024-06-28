@@ -112,14 +112,18 @@ module math_pipelined
     end
 
 //gate_and
+    `define OPERATION &
     if( LATENCY == 0 ) begin
-        assign gate_and = &I1;
+        assign gate_and = `OPERATION I1;
+    end else if( LATENCY == 1 ) begin
+        reg r_GATE_AND = 0;
+        always @( posedge clk ) r_GATE_AND <= `OPERATION I1;
+        assign gate_and = r_GATE_AND;
     end else begin
         localparam GATE_AND_LUT_WIDTH   = f_NaryRecursionGetUnitWidthForLatency( CHUNK_COUNT, LATENCY );// use the maximum 'latency' to find the operator unit input width
         localparam GATE_AND_VECTOR_SIZE = f_NaryRecursionGetVectorSize( CHUNK_COUNT, GATE_AND_LUT_WIDTH );// use the operator input width to find how many units are needed
         reg [CHUNK_COUNT+GATE_AND_VECTOR_SIZE-1:0] r_GATE_AND = 0;
         assign gate_and = r_GATE_AND[CHUNK_COUNT+GATE_AND_VECTOR_SIZE-1];
-        `define OPERATION &
         // take sections of 'I1' then perform the operation on them.
         // then store the result in a register for each section.
         for( idx = 0; idx <= CHUNK_COUNT - 1; idx = idx + 1 ) begin : GATE_AND_base_loop
@@ -140,19 +144,23 @@ module math_pipelined
             // perform the function and store the output
             always @( posedge clk ) r_GATE_AND[CHUNK_COUNT+unit_index] <= `OPERATION unit_inputs;  // edit operation here
         end
-        `undef OPERATION
     end
+    `undef OPERATION
 
 //gate_or
+    `define OPERATION |
     if( LATENCY == 0 ) begin
-        assign gate_or = |I1;
+        assign gate_or = `OPERATION I1;
+    end else if( LATENCY == 1 ) begin
+        reg r_GATE_OR = 0;
+        always @( posedge clk ) r_GATE_OR <= `OPERATION I1;
+        assign gate_or = r_GATE_OR;
     end else begin
         localparam GATE_OR_LUT_WIDTH        = f_NaryRecursionGetUnitWidthForLatency( CHUNK_COUNT, LATENCY );// use the maximum 'latency' to find the operator unit input width
         localparam GATE_OR_VECTOR_SIZE      = f_NaryRecursionGetVectorSize( CHUNK_COUNT, GATE_OR_LUT_WIDTH );   // use the operator input width to find how many units are needed
         reg [CHUNK_COUNT+GATE_OR_VECTOR_SIZE-1:0] r_GATE_OR = 0;
         assign gate_or = r_GATE_OR[CHUNK_COUNT+GATE_OR_VECTOR_SIZE-1];
 
-        `define OPERATION |
         // take sections of 'I1' then perform the operation on them.
         // then store the result in a register for each section.
         for( idx = 0; idx <= CHUNK_COUNT - 1; idx = idx + 1 ) begin : GATE_OR_base_loop
@@ -173,19 +181,23 @@ module math_pipelined
             // perform the function and store the output
             always @( posedge clk ) r_GATE_OR[CHUNK_COUNT+unit_index] <= `OPERATION unit_inputs;  // edit operation here
         end
-        `undef OPERATION
     end
+    `undef OPERATION
 
 //gate_xor
+    `define OPERATION ^
     if( LATENCY == 0 ) begin
-        assign gate_xor = ^I1;
+        assign gate_xor = `OPERATION I1;
+    end else if( LATENCY == 1 ) begin
+        reg r_GATE_XOR = 0;
+        always @( posedge clk ) r_GATE_XOR <= `OPERATION I1;
+        assign gate_xor = r_GATE_XOR;
     end else begin
         localparam GATE_XOR_LUT_WIDTH        = f_NaryRecursionGetUnitWidthForLatency( CHUNK_COUNT, LATENCY );// use the maximum 'latency' to find the operator unit input width
         localparam GATE_XOR_VECTOR_SIZE      = f_NaryRecursionGetVectorSize( CHUNK_COUNT, GATE_XOR_LUT_WIDTH );   // use the operator input width to find how many units are needed
         reg [CHUNK_COUNT+GATE_XOR_VECTOR_SIZE-1:0] r_GATE_XOR = 0;
         assign gate_xor = r_GATE_XOR[CHUNK_COUNT+GATE_XOR_VECTOR_SIZE-1];
 
-        `define OPERATION ^
         // take sections of 'I1' then perform the operation on them.
         // then store the result in a register for each section.
         for( idx = 0; idx <= CHUNK_COUNT - 1; idx = idx + 1 ) begin : GATE_XOR_base_loop
@@ -206,13 +218,22 @@ module math_pipelined
             // perform the function and store the output
             always @( posedge clk ) r_GATE_XOR[CHUNK_COUNT+unit_index] <= `OPERATION unit_inputs;  // edit operation here
         end
-        `undef OPERATION
     end
+    `undef OPERATION
+
 //cmp_eq
- 
     if( LATENCY == 0 ) begin
         assign cmp_eq   = I1 == I3;
         assign cmp_neq  = I1 != I3;
+    end else if( LATENCY == 1 ) begin
+        reg r_CMP_EQ = 0;
+        reg r_CMP_NEQ = 0;
+        always @( posedge clk ) begin
+            r_CMP_EQ <= I1 == I3;
+            r_CMP_NEQ <= I1 != I3;
+        end
+        assign cmp_eq = r_CMP_EQ;
+        assign cmp_neq = r_CMP_NEQ;
     end else begin
         localparam CMP_EQ_LUT_WIDTH =      f_TailRecursionGetUnitWidthForLatency(CHUNK_COUNT, LATENCY > 1 ? LATENCY - 1 : 1); // use the maximum 'latency' to find the comparators unit width
         localparam CMP_EQ_REG_WIDTH =      f_TailRecursionGetVectorSize(CHUNK_COUNT, CMP_EQ_LUT_WIDTH); // use the comparators width to find how many units are needed
