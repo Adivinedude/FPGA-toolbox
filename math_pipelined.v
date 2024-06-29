@@ -1,9 +1,9 @@
 ////////////////////////////////////////////////////////////////////////////////
-// Filename:	math_pipelined.v
+// Filename:	math.v
 //
-// Project:	math_pipelined 
+// Project:	math 
 //
-// Purpose:	a fast pipelined ripple carry ALU with configurable
+// Purpose:	Building blocks for a fast pipelined ripple carry ALU with configurable
 //          width and latency.
 //
 // Creator:	Ronald Rainwater
