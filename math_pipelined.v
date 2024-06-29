@@ -35,6 +35,7 @@ module math_pipelined
     )
     (
         input   wire                clk,
+        input   wire                rst,
         input   wire    [WIDTH-1:0] I1,
         input   wire    [WIDTH-1:0] I2,
         input   wire    [WIDTH-1:0] I3,
@@ -91,7 +92,12 @@ module math_pipelined
                 assign sum[WIDTH-1:WIDTH-LAST_CHUNK_SIZE] = I1[WIDTH-1:WIDTH-LAST_CHUNK_SIZE] + { 1'b0, I2[WIDTH-1:WIDTH-LAST_CHUNK_SIZE] } + (idx == 0 ? 1'b0 : r_sum_cout_chain[idx-1]);
             end
         end 
-        always @( posedge clk ) r_sum_cout_chain <= w_sum_cout_chain;
+        always @( posedge clk ) begin
+            if( rst ) begin
+                r_sum_cout_chain <= 0;
+            end else
+                r_sum_cout_chain <= w_sum_cout_chain;
+        end
     end
 
 //subtraction
@@ -108,7 +114,12 @@ module math_pipelined
                 assign sub[WIDTH-1:WIDTH-LAST_CHUNK_SIZE] = I1[WIDTH-1:WIDTH-LAST_CHUNK_SIZE] - { 1'b0, I2[WIDTH-1:WIDTH-LAST_CHUNK_SIZE] } - (idx == 0 ? 1'b0 : r_sub_cout_chain[idx-1]);
             end
         end 
-        always @( posedge clk ) r_sub_cout_chain <= w_sub_cout_chain;
+        always @( posedge clk ) begin
+            if( rst ) begin
+                r_sub_cout_chain <= 0;
+            end else
+                r_sub_cout_chain <= w_sub_cout_chain;
+        end
     end
 
 //gate_and

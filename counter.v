@@ -73,6 +73,7 @@ module counter_with_strobe
     math_pipelined #(.WIDTH(WIDTH), .LATENCY(LATENCY)) counter_plus_plus 
     (
         .clk(   clk ),
+        .rst(   trigger && enable ),
         .I1(    counter_ff ),
         .I2(    enable ),
         .I3(    reset_value ),
