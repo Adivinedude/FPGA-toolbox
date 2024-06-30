@@ -58,7 +58,9 @@
 // First Call f_TailRecursionGetVectorSize(CHUNK_COUNT, LUT_WIDTH, 0 );
 function automatic integer f_TailRecursionGetVectorSize;
     input integer base, lut_width;         
-    f_TailRecursionGetVectorSize=iterator_TailRecursionGetVectorSize(base, lut_width, 0);
+    f_TailRecursionGetVectorSize=(base > 1 )
+        ? iterator_TailRecursionGetVectorSize(base, lut_width, 0)
+        : 0;
 endfunction
 function automatic integer iterator_TailRecursionGetVectorSize;
     input integer base, lut_width, current_count;         
