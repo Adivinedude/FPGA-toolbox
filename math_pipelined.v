@@ -217,7 +217,6 @@ module math_combinational
         cmp_neq
     );
         input   wire                clk;
-        input   wire                rst;
         input   wire    [WIDTH-1:0] I1;
         input   wire    [WIDTH-1:0] I2;
         input   wire    [WIDTH-1:0] I3;
@@ -249,7 +248,7 @@ module math_combinational
     localparam CHUNK_COUNT = WIDTH % ALU_WIDTH == 0 ? WIDTH / ALU_WIDTH : WIDTH / ALU_WIDTH + 1; 
     // find the size of the last chunk needed to contain the counter.
     localparam LAST_CHUNK_SIZE = WIDTH % ALU_WIDTH == 0 ? ALU_WIDTH : WIDTH % ALU_WIDTH;
-
+    initial $display("WIDTH:%d\tLATENCY:%d\nALU_WIDTH:%d\tCHUNK_COUNT:%d\tLAST_CHUNK_SIZE:%d",WIDTH,LATENCY, ALU_WIDTH, CHUNK_COUNT, LAST_CHUNK_SIZE);
     genvar idx;
     genvar unit_index;
     genvar input_index;
@@ -379,13 +378,14 @@ module math_combinational
     // then store the result in a register for each section.
     for( idx = 0; idx <= CHUNK_COUNT - 1; idx = idx + 1 ) begin : CMP_EQ_base_loop
         if( idx != CHUNK_COUNT - 1 ) begin // !LAST_CHUNK
+            initial $display("not last chunk idx:%d", idx);
             assign cmp_eq_carry_out[idx] = I1[idx*ALU_WIDTH+:ALU_WIDTH] == I3[idx*ALU_WIDTH+:ALU_WIDTH];
         end else begin    // == LAST_CHUNK
+            initial $display("last chunk idx:%d %b == %b", idx, I1, I3);//I1[idx*ALU_WIDTH+:LAST_CHUNK_SIZE], I3[idx*ALU_WIDTH+:LAST_CHUNK_SIZE]);
             assign cmp_eq_carry_out[idx] = I1[idx*ALU_WIDTH+:LAST_CHUNK_SIZE] == I3[idx*ALU_WIDTH+:LAST_CHUNK_SIZE];
         end
     end
     // the last unit may be a different size than the others. account for this here
-    //`define input_size  unit_index != (CMP_EQ_VECTOR_SIZE-1)?CMP_EQ_LUT_WIDTH-1:CMP_EQ_LAST_LUT_WIDTH-1
     function automatic integer f_input_size;
         input integer unit_index;
         begin
@@ -396,10 +396,9 @@ module math_combinational
             end
         end
     endfunction
-    initial $display("WIDTH:%d\tLATENCY:%d\tCHUNK_COUNT:%d\nCMP_EQ_VECTOR_SIZE:%d\tCMP_EQ_LUT_WIDTH:%d\tCMP_EQ_LAST_LUT_WIDTH:%d",WIDTH, LATENCY,CHUNK_COUNT,CMP_EQ_VECTOR_SIZE,CMP_EQ_LUT_WIDTH,CMP_EQ_LAST_LUT_WIDTH);
+    initial $display("CMP_EQ_VECTOR_SIZE:%d\tCMP_EQ_LUT_WIDTH:%d\tCMP_EQ_LAST_LUT_WIDTH:%d",CMP_EQ_VECTOR_SIZE,CMP_EQ_LUT_WIDTH,CMP_EQ_LAST_LUT_WIDTH);
     // loop through each unit and assign the in and outs
     for( unit_index = 0; unit_index < CMP_EQ_VECTOR_SIZE; unit_index = unit_index + 1) begin
-        if( CHUNK_COUNT > 1 ) begin
             initial $display("f_input_size: %d", f_input_size(unit_index));
             // make the input wires for this unit   
             wire [f_input_size(unit_index):0] unit_inputs;
@@ -413,8 +412,7 @@ module math_combinational
             assign cmp_eq_carry_out[CHUNK_COUNT+unit_index] = &unit_inputs;
             if( unit_index == CMP_EQ_VECTOR_SIZE - 1 )
                 assign cmp_neq = ~&unit_inputs;
-        end else begin
-            assign cmp_neq = ~cmp_eq_carry_in[CHUNK_COUNT-1];
-        end
     end
+    if( CMP_EQ_VECTOR_SIZE == 0 )
+        assign cmp_neq = ~cmp_eq_carry_in[CHUNK_COUNT+CMP_EQ_VECTOR_SIZE-1];
 endmodule
