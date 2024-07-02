@@ -74,45 +74,43 @@ module math_lfmr // linear feedback math register, 1 input, get answer LATENCY c
     localparam CHUNK_COUNT = WIDTH % ALU_WIDTH == 0 ? WIDTH / ALU_WIDTH : WIDTH / ALU_WIDTH + 1; 
     // find the size of the last chunk needed to contain the counter.
     localparam LAST_CHUNK_SIZE = WIDTH % ALU_WIDTH == 0 ? ALU_WIDTH : WIDTH % ALU_WIDTH;
+    // find values for gates
+    localparam GATE_LUT_WIDTH        = f_NaryRecursionGetUnitWidthForLatency( CHUNK_COUNT, LATENCY );// use the maximum 'latency' to find the operator unit input width
+    localparam GATE_CARRYCHAIN_WIDTH = f_NaryRecursionGetVectorSize( CHUNK_COUNT, GATE_LUT_WIDTH );// use the operator input width to find how many units are needed
+    // find values for cmp
+    localparam CMP_LUT_WIDTH        = f_TailRecursionGetUnitWidthForLatency(CHUNK_COUNT, LATENCY > 1 ? LATENCY : 1); // use the maximum 'latency' to find the comparators unit width
+    localparam CMP_CARRYCHAIN_WIDTH = f_TailRecursionGetVectorSize(CHUNK_COUNT, CMP_LUT_WIDTH); // use the comparators width to find how many units are needed
 
 //addition 
     reg  [CHUNK_COUNT-1:0]  r_sum_chain = 0;
     wire [CHUNK_COUNT-1:0]  w_sum_chain;
-    if( LATENCY == 0 ) begin
-        assign w_sum_chain = 0;
-    end else begin
-        always @( posedge clk ) begin
-            if( rst ) begin
-                r_sum_chain <= 0;
-            end else begin
-                r_sum_chain <= w_sum_chain;
-            end
+    always @( posedge clk ) begin
+        if( rst ) begin
+            r_sum_chain <= 0;
+        end else begin
+            r_sum_chain <= w_sum_chain;
         end
     end
 
 //subtraction
     reg  [CHUNK_COUNT-1:0] r_sub_chain = 0;
     wire [CHUNK_COUNT-1:0] w_sub_chain;
-    if( LATENCY == 0 ) begin
-        assign w_sub_chain = 0;
-    end else begin
-        always @( posedge clk ) begin
-            if( rst ) begin
-                r_sub_chain <= 0;
-            end else begin
-                r_sub_chain <= w_sub_chain;
-            end
+    always @( posedge clk ) begin
+        if( rst ) begin
+            r_sub_chain <= 0;
+        end else begin
+            r_sub_chain <= w_sub_chain;
         end
     end
 
 //gate_and
-    localparam GATE_AND_LUT_WIDTH   = f_NaryRecursionGetUnitWidthForLatency( CHUNK_COUNT, LATENCY );// use the maximum 'latency' to find the operator unit input width
-    localparam GATE_AND_VECTOR_SIZE = f_NaryRecursionGetVectorSize( CHUNK_COUNT, GATE_AND_LUT_WIDTH );// use the operator input width to find how many units are needed
-    reg     [CHUNK_COUNT+GATE_AND_VECTOR_SIZE-1:0]  r_GATE_AND_CHAIN = 0;
-    wire    [CHUNK_COUNT+GATE_AND_VECTOR_SIZE-1:0]  w_GATE_AND_CHAIN;
-    if( LATENCY == 0 ) begin
-        assign w_GATE_AND_CHAIN = 0;
+    reg     [CHUNK_COUNT+GATE_CARRYCHAIN_WIDTH-1:0]  r_GATE_AND_CHAIN = 0;
+    wire    [CHUNK_COUNT+GATE_CARRYCHAIN_WIDTH-1:0]  w_GATE_AND_CHAIN;
+    wire    w_gate_and;
+    if( LATENCY != 0 ) begin
+        assign gate_and = w_gate_and;
     end else begin
+        assign gate_and = r_GATE_AND_CHAIN[CHUNK_COUNT+GATE_CARRYCHAIN_WIDTH-1];
         always @( posedge clk ) begin
             if( rst ) begin
                 r_GATE_AND_CHAIN <= 0;
@@ -123,13 +121,13 @@ module math_lfmr // linear feedback math register, 1 input, get answer LATENCY c
     end
 
 //gate_or
-    localparam GATE_OR_LUT_WIDTH        = f_NaryRecursionGetUnitWidthForLatency( CHUNK_COUNT, LATENCY );// use the maximum 'latency' to find the operator unit input width
-    localparam GATE_OR_VECTOR_SIZE      = f_NaryRecursionGetVectorSize( CHUNK_COUNT, GATE_OR_LUT_WIDTH );   // use the operator input width to find how many units are needed
-    reg     [CHUNK_COUNT+GATE_OR_VECTOR_SIZE-1:0]   r_GATE_OR_CHAIN = 0;
-    wire    [CHUNK_COUNT+GATE_OR_VECTOR_SIZE-1:0]   w_GATE_OR_CHAIN;
+    reg     [CHUNK_COUNT+GATE_CARRYCHAIN_WIDTH-1:0]   r_GATE_OR_CHAIN = 0;
+    wire    [CHUNK_COUNT+GATE_CARRYCHAIN_WIDTH-1:0]   w_GATE_OR_CHAIN;
+    wire    w_gate_or;
     if( LATENCY == 0 ) begin
-        assign w_GATE_OR_CHAIN = 0;
+        assign gate_or = w_gate_or;
     end else begin
+        assign gate_or = r_GATE_OR_CHAIN[CHUNK_COUNT+GATE_CARRYCHAIN_WIDTH-1];
         always @( posedge clk ) begin
             if( rst ) begin
                 r_GATE_OR_CHAIN <= 0;
@@ -140,13 +138,13 @@ module math_lfmr // linear feedback math register, 1 input, get answer LATENCY c
     end
 
 //gate_xor
-    localparam GATE_XOR_LUT_WIDTH        = f_NaryRecursionGetUnitWidthForLatency( CHUNK_COUNT, LATENCY );// use the maximum 'latency' to find the operator unit input width
-    localparam GATE_XOR_VECTOR_SIZE      = f_NaryRecursionGetVectorSize( CHUNK_COUNT, GATE_XOR_LUT_WIDTH );   // use the operator input width to find how many units are needed
-    reg     [CHUNK_COUNT+GATE_XOR_VECTOR_SIZE-1:0]  r_GATE_XOR_CHAIN = 0;
-    wire    [CHUNK_COUNT+GATE_XOR_VECTOR_SIZE-1:0]  w_GATE_XOR_CHAIN;
+    reg     [CHUNK_COUNT+GATE_CARRYCHAIN_WIDTH-1:0]  r_GATE_XOR_CHAIN = 0;
+    wire    [CHUNK_COUNT+GATE_CARRYCHAIN_WIDTH-1:0]  w_GATE_XOR_CHAIN;
+    wire    w_gate_xor;
     if( LATENCY == 0 ) begin
-        assign w_GATE_XOR_CHAIN = 0;
+        assign gate_xor = w_gate_xor;
     end else begin
+        assign gate_xor = r_GATE_xor_CHAIN[CHUNK_COUNT+GATE_CARRYCHAIN_WIDTH-1];
         always @( posedge clk ) begin
             if( rst ) begin
                 r_GATE_XOR_CHAIN <= 0;
@@ -156,20 +154,24 @@ module math_lfmr // linear feedback math register, 1 input, get answer LATENCY c
         end
     end
 //cmp_eq
-    localparam CMP_EQ_LUT_WIDTH =      f_TailRecursionGetUnitWidthForLatency(CHUNK_COUNT, LATENCY > 1 ? LATENCY - 1 : 1); // use the maximum 'latency' to find the comparators unit width
-    localparam CMP_EQ_REG_WIDTH =      f_TailRecursionGetVectorSize(CHUNK_COUNT, CMP_EQ_LUT_WIDTH); // use the comparators width to find how many units are needed
-    localparam CMP_EQ_LAST_LUT_WIDTH = f_TailRecursionGetLastUnitWidth(CHUNK_COUNT, CMP_EQ_LUT_WIDTH); // find the width of the last unit.
-    // initial $display("lut_width:%d\treg_width:%d\tl_lut:%d",CMP_EQ_LUT_WIDTH,CMP_EQ_REG_WIDTH,CMP_EQ_LAST_LUT_WIDTH);
-    reg     [CHUNK_COUNT+CMP_EQ_REG_WIDTH-1:0]  r_CMP_EQ_CHAIN = 0;
-    wire    [CHUNK_COUNT+CMP_EQ_REG_WIDTH-1:0]  w_CMP_EQ_CHAIN;
+    // initial $display("lut_width:%d\treg_width:%d\tl_lut:%d",CMP_LUT_WIDTH,CMP_CARRYCHAIN_WIDTH,CMP_LAST_LUT_WIDTH);
+    reg     [CHUNK_COUNT+CMP_CARRYCHAIN_WIDTH  :0]  r_CMP_EQ_CHAIN = 0; // add one bit for the neq result
+    wire    [CHUNK_COUNT+CMP_CARRYCHAIN_WIDTH-1:0]  w_CMP_EQ_CHAIN;
+    wire    w_cmp_eq;
+    wire    w_cmp_neq;
     if( LATENCY == 0 ) begin
-        assign w_CMP_EQ_CHAIN = 0;
+        assign cmp_eq = w_cmp_eq;
+        assign cmp_neq = w_cmp_neq;
     end else begin
+        assign cmp_eq  = r_CMP_EQ_CHAIN[CHUNK_COUNT+CMP_CARRYCHAIN_WIDTH-1];
+        assign cmp_neq = r_CMP_EQ_CHAIN[CHUNK_COUNT+CMP_CARRYCHAIN_WIDTH];
         always @( posedge clk ) begin
             if( rst ) begin
                 r_CMP_EQ_CHAIN <= 0;
-            end else
+            end else begin
                 r_CMP_EQ_CHAIN <= w_CMP_EQ_CHAIN;
+                r_CMP_EQ_CHAIN[CHUNK_COUNT+CMP_CARRYCHAIN_WIDTH] <= w_cmp_neq;
+            end
         end
     end
 
@@ -185,19 +187,19 @@ module math_lfmr // linear feedback math register, 1 input, get answer LATENCY c
         .sub(sub), 
         .sub_carry_in(r_sub_chain), 
         .sub_carry_out(w_sub_chain),
-        .gate_and(gate_and), 
+        .gate_and(w_gate_and), 
         .gate_and_carry_in(r_GATE_AND_CHAIN), 
         .gate_and_carry_out(w_GATE_AND_CHAIN),
-        .gate_or(gate_or),  
+        .gate_or(w_gate_or),  
         .gate_or_carry_in(r_GATE_OR_CHAIN),  
         .gate_or_carry_out(w_GATE_OR_CHAIN),
-        .gate_xor(gate_xor), 
+        .gate_xor(w_gate_xor), 
         .gate_xor_carry_in(r_GATE_XOR_CHAIN), 
         .gate_xor_carry_out(w_GATE_XOR_CHAIN),
-        .cmp_eq(cmp_eq),   
+        .cmp_eq(w_cmp_eq),   
         .cmp_eq_carry_in(r_CMP_EQ_CHAIN),   
         .cmp_eq_carry_out(w_CMP_EQ_CHAIN),
-        .cmp_neq(cmp_neq)
+        .cmp_neq(w_cmp_neq)
     );    
 
 endmodule
@@ -248,7 +250,19 @@ module math_combinational
     localparam CHUNK_COUNT = WIDTH % ALU_WIDTH == 0 ? WIDTH / ALU_WIDTH : WIDTH / ALU_WIDTH + 1; 
     // find the size of the last chunk needed to contain the counter.
     localparam LAST_CHUNK_SIZE = WIDTH % ALU_WIDTH == 0 ? ALU_WIDTH : WIDTH % ALU_WIDTH;
-    initial $display("WIDTH:%d\tLATENCY:%d\nALU_WIDTH:%d\tCHUNK_COUNT:%d\tLAST_CHUNK_SIZE:%d",WIDTH,LATENCY, ALU_WIDTH, CHUNK_COUNT, LAST_CHUNK_SIZE);
+    initial $display("WIDTH:%d\tLATENCY:%d\tALU_WIDTH:%d\tCHUNK_COUNT:%d\tLAST_CHUNK_SIZE:%d", WIDTH, LATENCY, ALU_WIDTH, CHUNK_COUNT, LAST_CHUNK_SIZE);
+    // find values for gates
+    localparam GATE_LUT_WIDTH   = f_NaryRecursionGetUnitWidthForLatency( CHUNK_COUNT, LATENCY );// use the maximum 'latency' to find the operator unit input width
+    localparam GATE_CARRYCHAIN_WIDTH = f_NaryRecursionGetVectorSize( CHUNK_COUNT, GATE_LUT_WIDTH );// use the operator input width to find how many units are needed
+    initial $display("GATE_LUT_WIDTH:%d\tGATE_CARRYCHAIN_WIDTH:%d", GATE_LUT_WIDTH, GATE_CARRYCHAIN_WIDTH);
+
+    // find values for cmp
+    localparam CMP_LUT_WIDTH        = f_TailRecursionGetUnitWidthForLatency(CHUNK_COUNT, LATENCY > 1 ? LATENCY - 1 : 1); // use the maximum 'latency' to find the comparators unit width
+    localparam CMP_CARRYCHAIN_WIDTH     = f_TailRecursionGetVectorSize(CHUNK_COUNT, CMP_LUT_WIDTH); // use the comparators width to find how many units are needed
+    localparam CMP_LAST_LUT_WIDTH   = f_TailRecursionGetLastUnitWidth(CHUNK_COUNT, CMP_LUT_WIDTH); // find the width of the last unit.
+    initial $display("CMP_LUT_WIDTH:%d\tCMP_CARRYCHAIN_WIDTH:%d\tCMP_LAST_LUT_WIDTH:%d", CMP_LUT_WIDTH, CMP_CARRYCHAIN_WIDTH, CMP_LAST_LUT_WIDTH);
+
+
     genvar idx;
     genvar unit_index;
     genvar input_index;
@@ -278,11 +292,9 @@ module math_combinational
     end 
 
 //gate_and
-    localparam GATE_AND_LUT_WIDTH   = f_NaryRecursionGetUnitWidthForLatency( CHUNK_COUNT, LATENCY );// use the maximum 'latency' to find the operator unit input width
-    localparam GATE_AND_VECTOR_SIZE = f_NaryRecursionGetVectorSize( CHUNK_COUNT, GATE_AND_LUT_WIDTH );// use the operator input width to find how many units are needed
     output  wire    gate_and;
-    input   wire    [CHUNK_COUNT+GATE_AND_VECTOR_SIZE-1:0] gate_and_carry_in;
-    output  wire    [CHUNK_COUNT+GATE_AND_VECTOR_SIZE-1:0] gate_and_carry_out;
+    input   wire    [CHUNK_COUNT+GATE_CARRYCHAIN_WIDTH-1:0] gate_and_carry_in;
+    output  wire    [CHUNK_COUNT+GATE_CARRYCHAIN_WIDTH-1:0] gate_and_carry_out;
     `define OPERATION &
     assign gate_and = gate_and_carry_in[CHUNK_COUNT+gate_and_carry_out-1];
     // take sections of 'I1' then perform the operation on them.
@@ -294,12 +306,12 @@ module math_combinational
         end
     end
     // loop through each unit and assign the in and outs
-    for( unit_index = 0; unit_index < GATE_AND_VECTOR_SIZE; unit_index = unit_index + 1) begin : GATE_AND_unit_loop
+    for( unit_index = 0; unit_index < GATE_CARRYCHAIN_WIDTH; unit_index = unit_index + 1) begin : GATE_AND_unit_loop
         // make the input wires for this unit   
-        wire [f_NaryRecursionGetUnitWidth(CHUNK_COUNT, GATE_AND_LUT_WIDTH, unit_index)-1:0] unit_inputs;
+        wire [f_NaryRecursionGetUnitWidth(CHUNK_COUNT, GATE_LUT_WIDTH, unit_index)-1:0] unit_inputs;
         // assign the inputs to their proper place
-        for( input_index = f_NaryRecursionGetUnitWidth(CHUNK_COUNT, GATE_AND_LUT_WIDTH, unit_index) - 1; input_index != ~0; input_index = input_index-1 ) begin : GATE_AND_input_loop
-                assign unit_inputs[input_index] = gate_and_carry_in[f_NaryRecursionGetUnitInputAddress(CHUNK_COUNT, GATE_AND_LUT_WIDTH, unit_index, input_index)];
+        for( input_index = f_NaryRecursionGetUnitWidth(CHUNK_COUNT, GATE_LUT_WIDTH, unit_index) - 1; input_index != ~0; input_index = input_index-1 ) begin : GATE_AND_input_loop
+                assign unit_inputs[input_index] = gate_and_carry_in[f_NaryRecursionGetUnitInputAddress(CHUNK_COUNT, GATE_LUT_WIDTH, unit_index, input_index)];
         end
         // perform the function and store the output
         assign gate_and_carry_out[CHUNK_COUNT+unit_index] = `OPERATION unit_inputs;  // edit operation here
@@ -307,13 +319,11 @@ module math_combinational
     `undef OPERATION
 
 //gate_or
-    localparam GATE_OR_LUT_WIDTH        = f_NaryRecursionGetUnitWidthForLatency( CHUNK_COUNT, LATENCY );// use the maximum 'latency' to find the operator unit input width
-    localparam GATE_OR_VECTOR_SIZE      = f_NaryRecursionGetVectorSize( CHUNK_COUNT, GATE_OR_LUT_WIDTH );   // use the operator input width to find how many units are needed
     output  wire                                            gate_or;
-    input   wire    [CHUNK_COUNT+GATE_OR_VECTOR_SIZE-1:0]   gate_or_carry_in;
-    output  wire    [CHUNK_COUNT+GATE_OR_VECTOR_SIZE-1:0]   gate_or_carry_out;
+    input   wire    [CHUNK_COUNT+GATE_CARRYCHAIN_WIDTH-1:0]   gate_or_carry_in;
+    output  wire    [CHUNK_COUNT+GATE_CARRYCHAIN_WIDTH-1:0]   gate_or_carry_out;
     `define OPERATION |
-    assign gate_or = gate_or_carry_in[CHUNK_COUNT+GATE_OR_VECTOR_SIZE-1];
+    assign gate_or = gate_or_carry_in[CHUNK_COUNT+GATE_CARRYCHAIN_WIDTH-1];
     // take sections of 'I1' then perform the operation on them.
     for( idx = 0; idx <= CHUNK_COUNT - 1; idx = idx + 1 ) begin : GATE_OR_base_loop
         if( idx != (CHUNK_COUNT - 1) ) begin // !LAST_CHUNK
@@ -323,12 +333,12 @@ module math_combinational
         end
     end
     // loop through each unit and assign the in and outs
-    for( unit_index = 0; unit_index < GATE_OR_VECTOR_SIZE; unit_index = unit_index + 1) begin : GATE_OR_unit_loop
+    for( unit_index = 0; unit_index < GATE_CARRYCHAIN_WIDTH; unit_index = unit_index + 1) begin : GATE_OR_unit_loop
         // make the input wires for this unit   
-        wire [f_NaryRecursionGetUnitWidth(CHUNK_COUNT, GATE_OR_LUT_WIDTH, unit_index)-1:0] unit_inputs;
+        wire [f_NaryRecursionGetUnitWidth(CHUNK_COUNT, GATE_LUT_WIDTH, unit_index)-1:0] unit_inputs;
         // assign the inputs to their proper place
-        for( input_index = f_NaryRecursionGetUnitWidth(CHUNK_COUNT, GATE_OR_LUT_WIDTH, unit_index) - 1; input_index != ~0; input_index = input_index-1 ) begin : GATE_OR_input_loop
-                assign unit_inputs[input_index] = gate_or_carry_in[f_NaryRecursionGetUnitInputAddress(CHUNK_COUNT, GATE_OR_LUT_WIDTH, unit_index, input_index)];
+        for( input_index = f_NaryRecursionGetUnitWidth(CHUNK_COUNT, GATE_LUT_WIDTH, unit_index) - 1; input_index != ~0; input_index = input_index-1 ) begin : GATE_OR_input_loop
+            assign unit_inputs[input_index] = gate_or_carry_in[f_NaryRecursionGetUnitInputAddress(CHUNK_COUNT, GATE_LUT_WIDTH, unit_index, input_index)];
         end
         // perform the function and store the output
         assign gate_or_carry_out[CHUNK_COUNT+unit_index] = `OPERATION unit_inputs;  // edit operation here
@@ -336,13 +346,11 @@ module math_combinational
     `undef OPERATION
 
 //gate_xor
-    localparam GATE_XOR_LUT_WIDTH        = f_NaryRecursionGetUnitWidthForLatency( CHUNK_COUNT, LATENCY );// use the maximum 'latency' to find the operator unit input width
-    localparam GATE_XOR_VECTOR_SIZE      = f_NaryRecursionGetVectorSize( CHUNK_COUNT, GATE_XOR_LUT_WIDTH );   // use the operator input width to find how many units are needed
     output  wire                                            gate_xor;
-    input   wire    [CHUNK_COUNT+GATE_XOR_VECTOR_SIZE-1:0]  gate_xor_carry_in;
-    output  wire    [CHUNK_COUNT+GATE_XOR_VECTOR_SIZE-1:0]  gate_xor_carry_out;
+    input   wire    [CHUNK_COUNT+GATE_CARRYCHAIN_WIDTH-1:0]  gate_xor_carry_in;
+    output  wire    [CHUNK_COUNT+GATE_CARRYCHAIN_WIDTH-1:0]  gate_xor_carry_out;
     `define OPERATION ^
-    assign gate_xor = gate_xor_carry_in[CHUNK_COUNT+GATE_XOR_VECTOR_SIZE-1];
+    assign gate_xor = gate_xor_carry_in[CHUNK_COUNT+GATE_CARRYCHAIN_WIDTH-1];
     // take sections of 'I1' then perform the operation on them.
     // then store the result in a register for each section.
     for( idx = 0; idx <= CHUNK_COUNT - 1; idx = idx + 1 ) begin : GATE_XOR_base_loop
@@ -353,35 +361,32 @@ module math_combinational
         end
     end
     // loop through each unit and assign the in and outs
-    for( unit_index = 0; unit_index < GATE_XOR_VECTOR_SIZE; unit_index = unit_index + 1) begin : GATE_XOR_unit_loop
+    for( unit_index = 0; unit_index < GATE_CARRYCHAIN_WIDTH; unit_index = unit_index + 1) begin : GATE_XOR_unit_loop
         // make the input wires for this unit   
-        wire [f_NaryRecursionGetUnitWidth(CHUNK_COUNT, GATE_XOR_LUT_WIDTH, unit_index)-1:0] unit_inputs;
+        wire [f_NaryRecursionGetUnitWidth(CHUNK_COUNT, GATE_LUT_WIDTH, unit_index)-1:0] unit_inputs;
         // assign the inputs to their proper place
-        for( input_index = f_NaryRecursionGetUnitWidth(CHUNK_COUNT, GATE_XOR_LUT_WIDTH, unit_index) - 1; input_index != ~0; input_index = input_index-1 ) begin : GATE_XOR_input_loop
-                assign unit_inputs[input_index] = gate_xor_carry_in[f_NaryRecursionGetUnitInputAddress(CHUNK_COUNT, GATE_XOR_LUT_WIDTH, unit_index, input_index)];
+        for( input_index = f_NaryRecursionGetUnitWidth(CHUNK_COUNT, GATE_LUT_WIDTH, unit_index) - 1; input_index != ~0; input_index = input_index-1 ) begin : GATE_XOR_input_loop
+                assign unit_inputs[input_index] = gate_xor_carry_in[f_NaryRecursionGetUnitInputAddress(CHUNK_COUNT, GATE_LUT_WIDTH, unit_index, input_index)];
         end
         // perform the function and store the output
         assign gate_xor_carry_out[CHUNK_COUNT+unit_index] = `OPERATION unit_inputs;  // edit operation here
     end
     `undef OPERATION
 
-//cmp_eq
-    localparam CMP_EQ_LUT_WIDTH =      f_TailRecursionGetUnitWidthForLatency(CHUNK_COUNT, LATENCY > 1 ? LATENCY - 1 : 1); // use the maximum 'latency' to find the comparators unit width
-    localparam CMP_EQ_VECTOR_SIZE =    f_TailRecursionGetVectorSize(CHUNK_COUNT, CMP_EQ_LUT_WIDTH); // use the comparators width to find how many units are needed
-    localparam CMP_EQ_LAST_LUT_WIDTH = f_TailRecursionGetLastUnitWidth(CHUNK_COUNT, CMP_EQ_LUT_WIDTH); // find the width of the last unit.
+//cmp_eq 
     output  wire                                            cmp_eq;
-    input   wire    [CHUNK_COUNT+CMP_EQ_VECTOR_SIZE-1:0]    cmp_eq_carry_in;
-    output  wire    [CHUNK_COUNT+CMP_EQ_VECTOR_SIZE-1:0]    cmp_eq_carry_out;
+    input   wire    [CHUNK_COUNT+CMP_CARRYCHAIN_WIDTH-1:0]  cmp_eq_carry_in;
+    output  wire    [CHUNK_COUNT+CMP_CARRYCHAIN_WIDTH-1:0]  cmp_eq_carry_out;
     output  wire                                            cmp_neq;
-    assign cmp_eq = cmp_eq_carry_in[CHUNK_COUNT+CMP_EQ_VECTOR_SIZE-1];
+    assign cmp_eq = cmp_eq_carry_out[CHUNK_COUNT+CMP_CARRYCHAIN_WIDTH-1];
     // take sections of the I1 and I3 then perform the operation on them.
     // then store the result in a register for each section.
-    for( idx = 0; idx <= CHUNK_COUNT - 1; idx = idx + 1 ) begin : CMP_EQ_base_loop
+    for( idx = 0; idx <= (CHUNK_COUNT - 1); idx = idx + 1 ) begin : CMP_EQ_base_loop
         if( idx != CHUNK_COUNT - 1 ) begin // !LAST_CHUNK
-            initial $display("not last chunk idx:%d", idx);
+            // initial $display("not last chunk idx:%d", idx);
             assign cmp_eq_carry_out[idx] = I1[idx*ALU_WIDTH+:ALU_WIDTH] == I3[idx*ALU_WIDTH+:ALU_WIDTH];
         end else begin    // == LAST_CHUNK
-            initial $display("last chunk idx:%d %b == %b", idx, I1, I3);//I1[idx*ALU_WIDTH+:LAST_CHUNK_SIZE], I3[idx*ALU_WIDTH+:LAST_CHUNK_SIZE]);
+            // always @(posedge clk) $display("\tI1:%b I3:%b == %b %b", I1, I3, I1[idx*ALU_WIDTH+:LAST_CHUNK_SIZE] == I3[idx*ALU_WIDTH+:LAST_CHUNK_SIZE], cmp_eq_carry_out[idx]);
             assign cmp_eq_carry_out[idx] = I1[idx*ALU_WIDTH+:LAST_CHUNK_SIZE] == I3[idx*ALU_WIDTH+:LAST_CHUNK_SIZE];
         end
     end
@@ -389,30 +394,29 @@ module math_combinational
     function automatic integer f_input_size;
         input integer unit_index;
         begin
-            if( unit_index != (CMP_EQ_VECTOR_SIZE-1) ) begin    // ! last unit
-                f_input_size = CMP_EQ_LUT_WIDTH-1;
+            if( unit_index != (CMP_CARRYCHAIN_WIDTH-1) ) begin    // ! last unit
+                f_input_size = CMP_LUT_WIDTH-1;
             end else begin                                      // == last unit
-                f_input_size = CMP_EQ_LAST_LUT_WIDTH-1;
+                f_input_size = CMP_LAST_LUT_WIDTH-1;
             end
         end
     endfunction
-    initial $display("CMP_EQ_VECTOR_SIZE:%d\tCMP_EQ_LUT_WIDTH:%d\tCMP_EQ_LAST_LUT_WIDTH:%d",CMP_EQ_VECTOR_SIZE,CMP_EQ_LUT_WIDTH,CMP_EQ_LAST_LUT_WIDTH);
     // loop through each unit and assign the in and outs
-    for( unit_index = 0; unit_index < CMP_EQ_VECTOR_SIZE; unit_index = unit_index + 1) begin
+    for( unit_index = 0; unit_index < CMP_CARRYCHAIN_WIDTH; unit_index = unit_index + 1) begin
             initial $display("f_input_size: %d", f_input_size(unit_index));
             // make the input wires for this unit   
             wire [f_input_size(unit_index):0] unit_inputs;
             // assign the inputs to their proper place
             for( input_index = f_input_size(unit_index); input_index != ~0; input_index = input_index-1 ) begin
-                // initial $display("unit_index: %d input_index:%d func:%d", unit_index, input_index, f_TailRecursionGetUnitInputAddress(CHUNK_COUNT, CMP_EQ_LUT_WIDTH, unit_index, input_index));
+                // initial $display("unit_index: %d input_index:%d func:%d", unit_index, input_index, f_TailRecursionGetUnitInputAddress(CHUNK_COUNT, CMP_LUT_WIDTH, unit_index, input_index));
                 assign unit_inputs[input_index] = 
-                    cmp_eq_carry_in[f_TailRecursionGetUnitInputAddress(CHUNK_COUNT, CMP_EQ_LUT_WIDTH, unit_index, input_index)];
+                    cmp_eq_carry_in[f_TailRecursionGetUnitInputAddress(CHUNK_COUNT, CMP_LUT_WIDTH, unit_index, input_index)];
             end
             // perform the function and store the output
             assign cmp_eq_carry_out[CHUNK_COUNT+unit_index] = &unit_inputs;
-            if( unit_index == CMP_EQ_VECTOR_SIZE - 1 )
+            if( unit_index == CMP_CARRYCHAIN_WIDTH - 1 )
                 assign cmp_neq = ~&unit_inputs;
     end
-    if( CMP_EQ_VECTOR_SIZE == 0 )
-        assign cmp_neq = ~cmp_eq_carry_in[CHUNK_COUNT+CMP_EQ_VECTOR_SIZE-1];
+    if( CMP_CARRYCHAIN_WIDTH == 0 )
+        assign cmp_neq = ~cmp_eq_carry_in[CHUNK_COUNT+CMP_CARRYCHAIN_WIDTH-1];
 endmodule

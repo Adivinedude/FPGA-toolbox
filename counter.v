@@ -31,7 +31,7 @@
 module counter_with_strobe
     #( 
         parameter WIDTH     = 4,
-        parameter LATENCY   = 2
+        parameter LATENCY   = 1
     )
     (
         input   wire                rst,
@@ -67,6 +67,7 @@ module counter_with_strobe
         end
     end
 
+    reg     strobe_ff = 0;
     reg     [WIDTH-1:0] counter_ff = 'd1;
     wire    [WIDTH-1:0] w_counter_ff;
     wire                trigger;
@@ -92,7 +93,6 @@ module counter_with_strobe
         end
     end
 
-    reg     strobe_ff = 0;
     assign  strobe  = strobe_ff;
     always @( posedge clk ) begin
         strobe_ff <= 0;   // turn strobe_ff off.
