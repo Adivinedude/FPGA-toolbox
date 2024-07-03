@@ -12,6 +12,9 @@ valid.
 
 ## math_piplined.v
 Building blocks for a fast pipelined ripple carry ALU with configurable width and latency.
+math_lfmr - linear feedback math register. Wrapper module, managing the pipelining of a single vector.
+math_combinational - Purely combinational ALU module, with automatic data structure configuration.
+
 
 ## recursion_iterators.v
 Functions used for building pipeline data structures. Structure diagrams included.
