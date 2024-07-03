@@ -223,17 +223,17 @@ module math_combinational
     localparam CHUNK_COUNT = WIDTH % ALU_WIDTH == 0 ? WIDTH / ALU_WIDTH : WIDTH / ALU_WIDTH + 1; 
     // find the size of the last chunk needed to contain the counter.
     localparam LAST_CHUNK_SIZE = WIDTH % ALU_WIDTH == 0 ? ALU_WIDTH : WIDTH % ALU_WIDTH;
-    initial $display("WIDTH:%d\tLATENCY:%d\tALU_WIDTH:%d\tCHUNK_COUNT:%d\tLAST_CHUNK_SIZE:%d", WIDTH, LATENCY, ALU_WIDTH, CHUNK_COUNT, LAST_CHUNK_SIZE);
+    // initial $display("WIDTH:%d\tLATENCY:%d\tALU_WIDTH:%d\tCHUNK_COUNT:%d\tLAST_CHUNK_SIZE:%d", WIDTH, LATENCY, ALU_WIDTH, CHUNK_COUNT, LAST_CHUNK_SIZE);
     // find values for gates
     localparam GATE_LUT_WIDTH   = f_NaryRecursionGetUnitWidthForLatency( CHUNK_COUNT, LATENCY );// use the maximum 'latency' to find the operator unit input width
     localparam GATE_CARRYCHAIN_WIDTH = f_NaryRecursionGetVectorSize( CHUNK_COUNT, GATE_LUT_WIDTH );// use the operator input width to find how many units are needed
-    initial $display("GATE_LUT_WIDTH:%d\tGATE_CARRYCHAIN_WIDTH:%d", GATE_LUT_WIDTH, GATE_CARRYCHAIN_WIDTH);
+    // initial $display("GATE_LUT_WIDTH:%d\tGATE_CARRYCHAIN_WIDTH:%d", GATE_LUT_WIDTH, GATE_CARRYCHAIN_WIDTH);
 
     // find values for cmp
     localparam CMP_LUT_WIDTH        = f_TailRecursionGetUnitWidthForLatency(CHUNK_COUNT, LATENCY > 1 ? LATENCY - 1 : 1); // use the maximum 'latency' to find the comparators unit width
     localparam CMP_CARRYCHAIN_WIDTH     = f_TailRecursionGetVectorSize(CHUNK_COUNT, CMP_LUT_WIDTH); // use the comparators width to find how many units are needed
     localparam CMP_LAST_LUT_WIDTH   = f_TailRecursionGetLastUnitWidth(CHUNK_COUNT, CMP_LUT_WIDTH); // find the width of the last unit.
-    initial $display("CMP_LUT_WIDTH:%d\tCMP_CARRYCHAIN_WIDTH:%d\tCMP_LAST_LUT_WIDTH:%d", CMP_LUT_WIDTH, CMP_CARRYCHAIN_WIDTH, CMP_LAST_LUT_WIDTH);
+    // initial $display("CMP_LUT_WIDTH:%d\tCMP_CARRYCHAIN_WIDTH:%d\tCMP_LAST_LUT_WIDTH:%d", CMP_LUT_WIDTH, CMP_CARRYCHAIN_WIDTH, CMP_LAST_LUT_WIDTH);
 
 
     genvar idx;
@@ -366,16 +366,14 @@ module math_combinational
         assign cmp_neq = ~cmp_eq_carry_out[CHUNK_COUNT+CMP_CARRYCHAIN_WIDTH-1]; // just invert the cmp_eq bit
     end else begin
         assign cmp_eq = cmp_eq_carry_in[CHUNK_COUNT+CMP_CARRYCHAIN_WIDTH-1];
-        assign cmp_neq = cmp_eq_carry_out[CHUNK_COUNT+CMP_CARRYCHAIN_WIDTH];    // use the faster unit comparator
+        assign cmp_neq = cmp_eq_carry_in[CHUNK_COUNT+CMP_CARRYCHAIN_WIDTH];    // use the faster unit comparator
     end
     // take sections of the I1 and I3 then perform the operation on them.
     // then store the result in a register for each section.
     for( idx = 0; idx <= (CHUNK_COUNT - 1); idx = idx + 1 ) begin : CMP_EQ_base_loop
         if( idx != CHUNK_COUNT - 1 ) begin // !LAST_CHUNK
-            // initial $display("not last chunk idx:%d", idx);
             assign cmp_eq_carry_out[idx] = I1[idx*ALU_WIDTH+:ALU_WIDTH] == I3[idx*ALU_WIDTH+:ALU_WIDTH];
         end else begin    // == LAST_CHUNK
-            // always @(posedge clk) $display("\tI1:%b I3:%b == %b %b", I1, I3, I1[idx*ALU_WIDTH+:LAST_CHUNK_SIZE] == I3[idx*ALU_WIDTH+:LAST_CHUNK_SIZE], cmp_eq_carry_out[idx]);
             assign cmp_eq_carry_out[idx] = I1[idx*ALU_WIDTH+:LAST_CHUNK_SIZE] == I3[idx*ALU_WIDTH+:LAST_CHUNK_SIZE];
         end
     end
@@ -392,7 +390,6 @@ module math_combinational
     endfunction
     // loop through each unit and assign the in and outs
     for( unit_index = 0; unit_index < CMP_CARRYCHAIN_WIDTH; unit_index = unit_index + 1) begin
-            initial $display("f_input_size: %d", f_input_size(unit_index));
             // make the input wires for this unit   
             wire [f_input_size(unit_index):0] unit_inputs;
             // assign the inputs to their proper place
