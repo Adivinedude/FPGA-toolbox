@@ -66,7 +66,7 @@ module math_lfmr // linear feedback math register, 1 input, get answer LATENCY c
     // determine the chunk width. knowing that each chunk will take 1 tick, 'width' / 'latency' will provide
     // the needed delay as specified in parameter LATENCY. protect values from base2 rounding errors
     // BugFix, prevent divide by zero condition.
-    localparam DENOMINATOR = LATENCY + 1;
+    localparam DENOMINATOR = (LATENCY==0) ? 1 : LATENCY;
     localparam ALU_WIDTH  = (WIDTH / DENOMINATOR * DENOMINATOR) == WIDTH 
             ? WIDTH / DENOMINATOR 
             : WIDTH / DENOMINATOR + 1;
@@ -106,72 +106,45 @@ module math_lfmr // linear feedback math register, 1 input, get answer LATENCY c
 //gate_and
     reg     [CHUNK_COUNT+GATE_CARRYCHAIN_WIDTH-1:0]  r_GATE_AND_CHAIN = 0;
     wire    [CHUNK_COUNT+GATE_CARRYCHAIN_WIDTH-1:0]  w_GATE_AND_CHAIN;
-    wire    w_gate_and;
-    if( LATENCY != 0 ) begin
-        assign gate_and = w_gate_and;
-    end else begin
-        assign gate_and = r_GATE_AND_CHAIN[CHUNK_COUNT+GATE_CARRYCHAIN_WIDTH-1];
-        always @( posedge clk ) begin
-            if( rst ) begin
-                r_GATE_AND_CHAIN <= 0;
-            end else begin
-                r_GATE_AND_CHAIN <= w_GATE_AND_CHAIN;
-            end
+    always @( posedge clk ) begin
+        if( rst ) begin
+            r_GATE_AND_CHAIN <= 0;
+        end else begin
+            r_GATE_AND_CHAIN <= w_GATE_AND_CHAIN;
         end
     end
 
 //gate_or
     reg     [CHUNK_COUNT+GATE_CARRYCHAIN_WIDTH-1:0]   r_GATE_OR_CHAIN = 0;
     wire    [CHUNK_COUNT+GATE_CARRYCHAIN_WIDTH-1:0]   w_GATE_OR_CHAIN;
-    wire    w_gate_or;
-    if( LATENCY == 0 ) begin
-        assign gate_or = w_gate_or;
-    end else begin
-        assign gate_or = r_GATE_OR_CHAIN[CHUNK_COUNT+GATE_CARRYCHAIN_WIDTH-1];
-        always @( posedge clk ) begin
-            if( rst ) begin
-                r_GATE_OR_CHAIN <= 0;
-            end else begin
-                r_GATE_OR_CHAIN <= w_GATE_OR_CHAIN;
-            end
+    always @( posedge clk ) begin
+        if( rst ) begin
+            r_GATE_OR_CHAIN <= 0;
+        end else begin
+            r_GATE_OR_CHAIN <= w_GATE_OR_CHAIN;
         end
     end
 
 //gate_xor
     reg     [CHUNK_COUNT+GATE_CARRYCHAIN_WIDTH-1:0]  r_GATE_XOR_CHAIN = 0;
     wire    [CHUNK_COUNT+GATE_CARRYCHAIN_WIDTH-1:0]  w_GATE_XOR_CHAIN;
-    wire    w_gate_xor;
-    if( LATENCY == 0 ) begin
-        assign gate_xor = w_gate_xor;
-    end else begin
-        assign gate_xor = r_GATE_xor_CHAIN[CHUNK_COUNT+GATE_CARRYCHAIN_WIDTH-1];
-        always @( posedge clk ) begin
-            if( rst ) begin
-                r_GATE_XOR_CHAIN <= 0;
-            end else begin
-                r_GATE_XOR_CHAIN <= w_GATE_XOR_CHAIN;
-            end
+    always @( posedge clk ) begin
+        if( rst ) begin
+            r_GATE_XOR_CHAIN <= 0;
+        end else begin
+            r_GATE_XOR_CHAIN <= w_GATE_XOR_CHAIN;
         end
     end
+
 //cmp_eq
     // initial $display("lut_width:%d\treg_width:%d\tl_lut:%d",CMP_LUT_WIDTH,CMP_CARRYCHAIN_WIDTH,CMP_LAST_LUT_WIDTH);
-    reg     [CHUNK_COUNT+CMP_CARRYCHAIN_WIDTH  :0]  r_CMP_EQ_CHAIN = 0; // add one bit for the neq result
-    wire    [CHUNK_COUNT+CMP_CARRYCHAIN_WIDTH-1:0]  w_CMP_EQ_CHAIN;
-    wire    w_cmp_eq;
-    wire    w_cmp_neq;
-    if( LATENCY == 0 ) begin
-        assign cmp_eq = w_cmp_eq;
-        assign cmp_neq = w_cmp_neq;
-    end else begin
-        assign cmp_eq  = r_CMP_EQ_CHAIN[CHUNK_COUNT+CMP_CARRYCHAIN_WIDTH-1];
-        assign cmp_neq = r_CMP_EQ_CHAIN[CHUNK_COUNT+CMP_CARRYCHAIN_WIDTH];
-        always @( posedge clk ) begin
-            if( rst ) begin
-                r_CMP_EQ_CHAIN <= 0;
-            end else begin
-                r_CMP_EQ_CHAIN <= w_CMP_EQ_CHAIN;
-                r_CMP_EQ_CHAIN[CHUNK_COUNT+CMP_CARRYCHAIN_WIDTH] <= w_cmp_neq;
-            end
+    reg     [CHUNK_COUNT+CMP_CARRYCHAIN_WIDTH:0]  r_CMP_EQ_CHAIN = 0; // add one bit for the neq result
+    wire    [CHUNK_COUNT+CMP_CARRYCHAIN_WIDTH:0]  w_CMP_EQ_CHAIN;
+    always @( posedge clk ) begin
+        if( rst ) begin
+            r_CMP_EQ_CHAIN <= 0;
+        end else begin
+            r_CMP_EQ_CHAIN <= w_CMP_EQ_CHAIN;
         end
     end
 
@@ -187,19 +160,19 @@ module math_lfmr // linear feedback math register, 1 input, get answer LATENCY c
         .sub(sub), 
         .sub_carry_in(r_sub_chain), 
         .sub_carry_out(w_sub_chain),
-        .gate_and(w_gate_and), 
+        .gate_and(gate_and), 
         .gate_and_carry_in(r_GATE_AND_CHAIN), 
         .gate_and_carry_out(w_GATE_AND_CHAIN),
-        .gate_or(w_gate_or),  
+        .gate_or(gate_or),  
         .gate_or_carry_in(r_GATE_OR_CHAIN),  
         .gate_or_carry_out(w_GATE_OR_CHAIN),
-        .gate_xor(w_gate_xor), 
+        .gate_xor(gate_xor), 
         .gate_xor_carry_in(r_GATE_XOR_CHAIN), 
         .gate_xor_carry_out(w_GATE_XOR_CHAIN),
-        .cmp_eq(w_cmp_eq),   
+        .cmp_eq(cmp_eq),   
         .cmp_eq_carry_in(r_CMP_EQ_CHAIN),   
         .cmp_eq_carry_out(w_CMP_EQ_CHAIN),
-        .cmp_neq(w_cmp_neq)
+        .cmp_neq(cmp_neq)
     );    
 
 endmodule
@@ -242,7 +215,7 @@ module math_combinational
     // determine the chunk width. knowing that each chunk will take 1 tick, 'width' / 'latency' will provide
     // the needed delay as specified in parameter LATENCY. protect values from base2 rounding errors
     // BugFix, prevent divide by zero condition.
-    localparam DENOMINATOR = LATENCY + 1;
+    localparam DENOMINATOR = (LATENCY==0) ? 1 : LATENCY;
     localparam ALU_WIDTH  = (WIDTH / DENOMINATOR * DENOMINATOR) == WIDTH 
             ? WIDTH / DENOMINATOR 
             : WIDTH / DENOMINATOR + 1;
@@ -296,7 +269,11 @@ module math_combinational
     input   wire    [CHUNK_COUNT+GATE_CARRYCHAIN_WIDTH-1:0] gate_and_carry_in;
     output  wire    [CHUNK_COUNT+GATE_CARRYCHAIN_WIDTH-1:0] gate_and_carry_out;
     `define OPERATION &
-    assign gate_and = gate_and_carry_in[CHUNK_COUNT+gate_and_carry_out-1];
+    if( LATENCY == 0 )
+        assign gate_and = gate_and_carry_out[CHUNK_COUNT+GATE_CARRYCHAIN_WIDTH-1];
+    else
+        assign gate_and = gate_and_carry_in[CHUNK_COUNT+GATE_CARRYCHAIN_WIDTH-1];
+        
     // take sections of 'I1' then perform the operation on them.
     for( idx = 0; idx <= CHUNK_COUNT - 1; idx = idx + 1 ) begin : GATE_AND_base_loop
         if( idx != (CHUNK_COUNT - 1) ) begin // !LAST_CHUNK
@@ -323,7 +300,10 @@ module math_combinational
     input   wire    [CHUNK_COUNT+GATE_CARRYCHAIN_WIDTH-1:0]   gate_or_carry_in;
     output  wire    [CHUNK_COUNT+GATE_CARRYCHAIN_WIDTH-1:0]   gate_or_carry_out;
     `define OPERATION |
-    assign gate_or = gate_or_carry_in[CHUNK_COUNT+GATE_CARRYCHAIN_WIDTH-1];
+    if( LATENCY == 0 )
+        assign gate_or = gate_or_carry_out[CHUNK_COUNT+GATE_CARRYCHAIN_WIDTH-1];
+    else
+        assign gate_or = gate_or_carry_in[CHUNK_COUNT+GATE_CARRYCHAIN_WIDTH-1];
     // take sections of 'I1' then perform the operation on them.
     for( idx = 0; idx <= CHUNK_COUNT - 1; idx = idx + 1 ) begin : GATE_OR_base_loop
         if( idx != (CHUNK_COUNT - 1) ) begin // !LAST_CHUNK
@@ -350,7 +330,10 @@ module math_combinational
     input   wire    [CHUNK_COUNT+GATE_CARRYCHAIN_WIDTH-1:0]  gate_xor_carry_in;
     output  wire    [CHUNK_COUNT+GATE_CARRYCHAIN_WIDTH-1:0]  gate_xor_carry_out;
     `define OPERATION ^
-    assign gate_xor = gate_xor_carry_in[CHUNK_COUNT+GATE_CARRYCHAIN_WIDTH-1];
+    if( LATENCY == 0 )
+        assign gate_xor = gate_xor_carry_out[CHUNK_COUNT+GATE_CARRYCHAIN_WIDTH-1];
+    else
+        assign gate_xor = gate_xor_carry_in[CHUNK_COUNT+GATE_CARRYCHAIN_WIDTH-1];
     // take sections of 'I1' then perform the operation on them.
     // then store the result in a register for each section.
     for( idx = 0; idx <= CHUNK_COUNT - 1; idx = idx + 1 ) begin : GATE_XOR_base_loop
@@ -375,10 +358,16 @@ module math_combinational
 
 //cmp_eq 
     output  wire                                            cmp_eq;
-    input   wire    [CHUNK_COUNT+CMP_CARRYCHAIN_WIDTH-1:0]  cmp_eq_carry_in;
-    output  wire    [CHUNK_COUNT+CMP_CARRYCHAIN_WIDTH-1:0]  cmp_eq_carry_out;
+    input   wire    [CHUNK_COUNT+CMP_CARRYCHAIN_WIDTH:0]    cmp_eq_carry_in;  // add extra bit for cmp_neq
+    output  wire    [CHUNK_COUNT+CMP_CARRYCHAIN_WIDTH:0]    cmp_eq_carry_out;
     output  wire                                            cmp_neq;
-    assign cmp_eq = cmp_eq_carry_out[CHUNK_COUNT+CMP_CARRYCHAIN_WIDTH-1];
+    if( LATENCY == 0 ) begin
+        assign cmp_eq = cmp_eq_carry_out[CHUNK_COUNT+CMP_CARRYCHAIN_WIDTH-1];
+        assign cmp_neq = ~cmp_eq_carry_out[CHUNK_COUNT+CMP_CARRYCHAIN_WIDTH-1]; // just invert the cmp_eq bit
+    end else begin
+        assign cmp_eq = cmp_eq_carry_in[CHUNK_COUNT+CMP_CARRYCHAIN_WIDTH-1];
+        assign cmp_neq = cmp_eq_carry_out[CHUNK_COUNT+CMP_CARRYCHAIN_WIDTH];    // use the faster unit comparator
+    end
     // take sections of the I1 and I3 then perform the operation on them.
     // then store the result in a register for each section.
     for( idx = 0; idx <= (CHUNK_COUNT - 1); idx = idx + 1 ) begin : CMP_EQ_base_loop
@@ -414,9 +403,8 @@ module math_combinational
             end
             // perform the function and store the output
             assign cmp_eq_carry_out[CHUNK_COUNT+unit_index] = &unit_inputs;
+            // if this is the last unit, perform an inverted comparison to find cmd_neq
             if( unit_index == CMP_CARRYCHAIN_WIDTH - 1 )
-                assign cmp_neq = ~&unit_inputs;
+                assign cmp_eq_carry_out[CHUNK_COUNT+unit_index+1] = ~&unit_inputs;
     end
-    if( CMP_CARRYCHAIN_WIDTH == 0 )
-        assign cmp_neq = ~cmp_eq_carry_in[CHUNK_COUNT+CMP_CARRYCHAIN_WIDTH-1];
 endmodule

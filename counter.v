@@ -31,7 +31,7 @@
 module counter_with_strobe
     #( 
         parameter WIDTH     = 4,
-        parameter LATENCY   = 1
+        parameter LATENCY   = 4
     )
     (
         input   wire                rst,
@@ -74,9 +74,9 @@ module counter_with_strobe
     math_lfmr #(.WIDTH(WIDTH), .LATENCY(LATENCY)) counter_plus_plus 
     (
         .clk(   clk ),
-        .rst(   trigger && enable ),
+        .rst(   (trigger && enable) || rst ),
         .I1(    counter_ff ),
-        .I2(    enable ),
+        .I2(    { {WIDTH-1{1'b0}}, enable } ),
         .I3(    reset_value ),
         .sum(   w_counter_ff ),
         .cmp_eq( trigger )
