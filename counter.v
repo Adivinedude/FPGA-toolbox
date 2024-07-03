@@ -38,34 +38,8 @@ module counter_with_strobe
         input   wire                clk,
         input   wire                enable,
         input   wire [WIDTH-1:0]    reset_value,
-        output  wire                strobe,
-        output  wire                ready,
-        output  wire                valid
+        output  wire                strobe
     );
-
-    // 'Used for formal verification, can be optimized away.
-    // 'ready' used to indicate when enable can be 'HIGH'
-    // 'valid' used to indicate when strobe may be 'HIGH'
-    reg [7:0]   ready_tracker   = 0;
-    assign      ready           = ready_tracker >= LATENCY;
-    reg         strobe_valid    = 0;
-    assign      valid           = strobe_valid;
-
-    always @( posedge clk ) begin
-        if( rst ) begin
-            ready_tracker <= 'd0;
-            strobe_valid  <= 0;
-        end else begin
-            if( enable ) begin
-                ready_tracker <= 'd0;
-                if( ready )
-                    strobe_valid <= 1'b1;
-            end else begin
-                ready_tracker <= ready ? ready_tracker : ready_tracker + 1;
-                strobe_valid  <= 0;
-            end
-        end
-    end
 
     reg     strobe_ff = 0;
     reg     [WIDTH-1:0] counter_ff = 'd1;
@@ -135,64 +109,91 @@ module counter_with_strobe
             tick_counter <= tick_counter + 1'b1;
         end
     end
+
+    // 'Used for formal verification, can be optimized away.
+    // 'ready' used to indicate when enable can be 'HIGH'
+    // 'valid' used to indicate when strobe may be 'HIGH'
+    wire    ready;
+    wire    valid;
+
+    reg [7:0]   ready_tracker   = 0;
+    assign      ready           = ready_tracker > LATENCY;
+    reg         strobe_valid    = 0;
+    assign      valid           = strobe_valid;
+
+    always @( posedge clk ) begin
+        if( rst ) begin
+            ready_tracker <= 'd0;
+            strobe_valid  <= 0;
+        end else begin
+            if( enable ) begin
+                ready_tracker <= 'd0;
+                if( ready )
+                    strobe_valid <= 1'b1;
+            end else begin
+                ready_tracker <= ready ? ready_tracker : ready_tracker + 1;
+                strobe_valid  <= 0;
+            end
+        end
+    end
 `endif 
 
 `ifdef FORMAL
 // Assume inputs
-    // // // //
-    // rst   //
-    // // // //
-        // force the test to start in a reset state
-            always @( posedge clk ) if( !past_valid_1 ) assume(rst);
-    // // // // //
-    // enable   //
-    // // // // //
-            //force 'enable' to be LOW when '!ready' and no more than 2 ticks when 'ready'
-                always @( posedge clk ) begin
-                    if( !past_valid_1 || rst )
-                        assume(!enable);
-                    else begin
-                        if( !$past(ready) )
-                            assume( !enable );
-                        else begin
-                            if( enable_off_counter >= 3 )
-                                assume( enable );
-                        end
-                    end
-                end
-            //force 'enable' to be HIGH for 1 clock cycle, and prevent enable from being HIGH 1 clock after reset
-                always @( posedge clk ) if( past_valid && ($past(enable) || $past(rst)) ) assume(!enable);
-    // // // // // //
-    // reset_value //
-    // // // // // //
-        // force the 'reset_value' to be greater than 1 but less than sby test 'DEPTH' / 3 b/c of the alternating enable bit
-            always @( posedge clk ) assume( reset_value >= 2 && reset_value <= 15 );
+// // // //
+// rst   //
+// // // //
+    // force the test to start in a reset state
+    always @( posedge clk ) if( !past_valid_1 ) assume(rst);
+// // // // //
+// enable   //
+// // // // //
+    //force 'enable' to be LOW when '!ready' and no more than 2 ticks when 'ready'
+    always @( posedge clk ) begin
+        if( !past_valid_1 || rst )
+            assume(!enable);
+        else begin
+            if( !ready )
+                assume( !enable );
+            else begin
+                if( enable_off_counter >= 3 )
+                    assume( enable );
+            end
+        end
+    end
+    //force 'enable' to be HIGH for 1 clock cycle, and prevent enable from being HIGH 1 clock after reset
+    always @( posedge clk ) if( past_valid && ($past(enable) || $past(rst)) ) assume(!enable);
+// // // // // //
+// reset_value //
+// // // // // //
+    // force the 'reset_value' to be greater than 1 but less than sby test 'DEPTH' / 3 b/c of the alternating enable bit
+    always @( posedge clk ) assume( reset_value >= 2 && reset_value <= 15 );
 
-        // force the 'reset_value to only change when strobe is HIGH and enable is LOW
-            always @( posedge clk )
-                if( past_valid && !(strobe && !enable) )
-                    assume( $stable(reset_value));
-    // // // // // // // // // // //
-    // counter_ff & tick_counter  //
-    // // // // // // // // // // //
-        always @( posedge clk )
-            if( strobe_valid && !strobe )
-                assume($past(counter_ff) == tick_counter );        
+    // force the 'reset_value to only change when strobe is HIGH and enable is LOW
+    always @( posedge clk )
+        if( past_valid && !(strobe && !enable) )
+            assume( $stable(reset_value));
+// // // // // // // // // // //
+// counter_ff & tick_counter  //
+// // // // // // // // // // //
+    always @( posedge clk )
+        if( strobe_valid && !strobe )
+            assume($past(counter_ff) == tick_counter );        
 // induction testing
 // using a 8 bit counter, need a test depth > 255 with enable forced high, 510 with enable toggling
 ///////////////////////////////////
 // Start testing expected behaviors
-    // The strobe can only go high when  ticks == 'reset_value'
-        always @( posedge clk ) strobe_correct:    assert( |{  !past_valid_1,
-                                                    rst,
-                                                    strobe == &{tick_counter == $past(reset_value), valid }
-                                                } );
-    // The strobe bit will only stays HIGH for 1 clock cycle
-        always @( posedge clk ) strobe_once:    assert( !past_valid ||                  // past is invalid
-                                                        !strobe     ||                  // strobe is off
-                                                        $changed(strobe)                // strobe has changed to HIGH
-                                                );
-
+// The strobe can only go high when  ticks == 'reset_value'
+    always @( posedge clk ) strobe_correct:    assert( |{  !past_valid_1,
+                                                rst,
+                                                strobe == &{tick_counter == $past(reset_value), valid }
+                                            } );
+// The strobe bit will only stays HIGH for 1 clock cycle
+    always @( posedge clk ) strobe_once:    assert( !past_valid ||                  // past is invalid
+                                                    !strobe     ||                  // strobe is off
+                                                    $changed(strobe)                // strobe has changed to HIGH
+                                            );
+// ensure I didn't break the design with assumptions.
     always @( posedge clk ) cover( strobe );
     always @( posedge clk ) cover( ready );
     always @( posedge clk ) cover( valid );
