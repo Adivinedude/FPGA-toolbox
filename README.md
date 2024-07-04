@@ -1,11 +1,6 @@
 # FPGA-Toolbox
 A collection of modules I have written while learning verilog.
 
-## [alu.v](alu.v)
-A Simulation model for Gowin GW1NR-9 ALU primitives. along with 2 helper modules
-* alu_chain - this module links together 'width' number of alu primitives into a functional unit
-* alu_pipeline - this module is the same as 'alu_chain' except the .cout() & .cin() are exposed for pipelining 
-
 ## [counter.v](counter.v)
 High speed, self pipelining counter with strobe output. Automatic pipelining is based on the parameter 'latency', which specifies the maximum number of clock cycles plus one, that the output should take to be
 valid.
