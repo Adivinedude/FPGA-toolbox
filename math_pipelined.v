@@ -59,9 +59,9 @@ module math_lfmr // linear feedback math register, 1 input, get answer LATENCY c
     //  cmp_lesser  = I1 < I3
 
     `ifndef FORMAL
-        `include "./toolbox/recursion_iterators.v"
+        `include "./toolbox/recursion_iterators.h"
     `else
-        `include "recursion_iterators.v"
+        `include "recursion_iterators.h"
     `endif
     // determine the chunk width. knowing that each chunk will take 1 tick, 'width' / 'latency' will provide
     // the needed delay as specified in parameter LATENCY. protect values from base2 rounding errors
@@ -208,9 +208,9 @@ module math_combinational
     //  cmp_lesser  = I1 < I3
 
     `ifndef FORMAL
-        `include "./toolbox/recursion_iterators.v"
+        `include "./toolbox/recursion_iterators.h"
     `else
-        `include "recursion_iterators.v"
+        `include "recursion_iterators.h"
     `endif
     // determine the chunk width. knowing that each chunk will take 1 tick, 'width' / 'latency' will provide
     // the needed delay as specified in parameter LATENCY. protect values from base2 rounding errors

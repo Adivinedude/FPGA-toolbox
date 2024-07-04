@@ -16,7 +16,7 @@ Building blocks for a fast pipelined ripple carry ALU with configurable width an
 * math_combinational - Purely combinational ALU module, with automatic data structure and carry chain construction.
 
 
-## [recursion_iterators.v](recursion_iterators.v)
+## [recursion_iterators.h](recursion_iterators.h)
 Functions used for building pipeline data structures. Structure diagrams included.
 * Tail Recursion - useful for running a magnitude comparison while data is in the pipeline.
 * Nary Recursion - useful for large reduction operations
