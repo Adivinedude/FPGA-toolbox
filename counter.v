@@ -88,29 +88,6 @@ module counter_with_strobe
     reg             past_valid          = 0;
     reg             past_valid_1        = 0;
 
-    reg [WIDTH-1:0] tick_counter        = 0;
-    reg [WIDTH-1:0] enable_off_counter  = 0;
-    always @( posedge clk ) begin
-        // verify $past is valid
-        past_valid   <= 1;
-        past_valid_1 <= past_valid;                    
-
-        // store the current reset_value anytime it is loaded and reset the counter    
-        if( rst || strobe ) begin    
-            tick_counter = 0;   
-        end 
-        if( rst || enable ) begin
-            enable_off_counter = 0;
-        end else begin
-            enable_off_counter = enable_off_counter + ready;
-        end
-        if(!rst && enable ) begin
-            // increment the tick counter when 'rst' is HIGH and 'enable' is HIGH
-            tick_counter <= tick_counter + 1'b1;
-        end
-    end
-
-    // 'Used for formal verification, can be optimized away.
     // 'ready' used to indicate when enable can be 'HIGH'
     // 'valid' used to indicate when strobe may be 'HIGH'
     wire    ready;
@@ -136,6 +113,30 @@ module counter_with_strobe
             end
         end
     end
+
+    reg [WIDTH-1:0] tick_counter        = 0;
+    reg [WIDTH-1:0] enable_off_counter  = 0;
+    always @( posedge clk ) begin
+        // verify $past is valid
+        past_valid   <= 1;
+        past_valid_1 <= past_valid;                    
+
+        // store the current reset_value anytime it is loaded and reset the counter    
+        if( rst || strobe ) begin    
+            tick_counter = 0;   
+        end 
+        if( rst || enable ) begin
+            enable_off_counter = 0;
+        end else begin
+            enable_off_counter = enable_off_counter + ready;
+        end
+        if(!rst && enable ) begin
+            // increment the tick counter when 'rst' is HIGH and 'enable' is HIGH
+            tick_counter <= tick_counter + 1'b1;
+        end
+    end
+
+    // 'Used for formal verification, can be optimized away.
 `endif 
 
 `ifdef FORMAL
