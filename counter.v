@@ -69,10 +69,14 @@ module counter_with_strobe
 
     assign  strobe  = strobe_ff;
     always @( posedge clk ) begin
-        strobe_ff <= 0;   // turn strobe_ff off.
-        if( enable ) begin
-            if( trigger ) begin
-                strobe_ff <= 1'b1;
+        if( rst ) begin
+            strobe_ff <= 0;   // turn strobe_ff off.
+        end else begin
+            strobe_ff <= 0;
+            if( enable ) begin
+                if( trigger ) begin
+                    strobe_ff <= 1'b1;
+                end
             end
         end
     end 
@@ -186,8 +190,7 @@ module counter_with_strobe
 // Start testing expected behaviors
 // The strobe can only go high when  ticks == 'reset_value'
     always @( posedge clk ) strobe_correct:    assert( |{  !past_valid_1,
-                                                rst,
-                                                strobe == &{tick_counter == $past(reset_value), valid }
+                                                strobe == &{tick_counter == $past(reset_value), valid , !$past(rst)}
                                             } );
 // The strobe bit will only stays HIGH for 1 clock cycle
     always @( posedge clk ) strobe_once:    assert( !past_valid ||                  // past is invalid
