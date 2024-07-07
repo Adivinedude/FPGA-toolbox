@@ -167,8 +167,9 @@ endfunction
     ///////////////////////////////////////////
     // N-ary tree Iteration Functions        //
     // f_NaryRecursionGetVectorSize          //
-    // f_NaryRecursionGetUnitWidth       //
+    // f_NaryRecursionGetUnitWidth           //
     // f_NaryRecursionGetDepth               //
+    // f_NaryRecursionUnitDepth              //
     // f_NaryRecursionGetUnitWidthForLatency //
     // f_NaryRecursionGetUnitInputAddress    //
     //                                            
@@ -284,6 +285,32 @@ function automatic integer iterator_NaryRecursionGetDepth;
                 ,rt + 1);
 endfunction
     //  initial begin:test_NaryRecursionGetDepth integer idx;$display("f_NaryRecursionGetDepth()");for(idx=2;idx<=10;idx=idx+1)begin $display("\t\t\t:10 lut_width:%d cmp_width:%d",idx,f_NaryRecursionGetDepth(10,idx));end end
+
+//  f_NaryRecursionGetUnitDepth - Returns the depth of the structure
+//  base        - Total number of input bits to operate on
+//  lut_width   - Maximum width of the LUT used.
+//  unit_index  - which LUT index is being requested
+//  rt          - Set to 0zero when calling this function, used internal, exposed for recursion property's
+//
+// First Call f_NaryRecursionGetUnitDepth(CHUNK_COUNT, LUT_WIDTH, UNIT, 0 );
+function automatic integer f_NaryRecursionGetUnitDepth;
+    input integer base, lut_width, unit_index;         
+    f_NaryRecursionGetUnitDepth=iterator_NaryRecursionGetUnitDepth(base, lut_width, unit_index, 0);
+endfunction
+function automatic integer iterator_NaryRecursionGetUnitDepth;
+    input integer base, lut_width, unit_index, rt;   
+    iterator_NaryRecursionGetUnitDepth=
+        base >= unit_index
+            ?rt
+            :iterator_NaryRecursionGetUnitDepth(
+                base / lut_width * lut_width == base
+                    ? base / lut_width
+                    : base / lut_width + 1
+                ,lut_width, 
+                unit_index - base,
+                rt + 1);
+endfunction
+    // initial begin:test_NaryRecursionGetUnitDepth integer idx;$display("f_NaryRecursionGetUnitDepth()");for(idx=0;idx<=10+f_NaryRecursionGetVectorSize(10,2);idx=idx+1)begin $display("\t\t\tbase:10 lut_width:2 unit:%d\tdepth:%d",idx,f_NaryRecursionGetUnitDepth(10,2,idx));end end
 
 // f_NaryRecursionGetUnitWidthForLatency - Returns the smallest UNIT width needed to set the structure's latency to a maximum value.
 //                           The actual latency will be less than or equal to the request
