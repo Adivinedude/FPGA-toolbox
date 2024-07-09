@@ -240,28 +240,34 @@ function automatic integer iterator_NaryRecursionGetUnitWidth;
         //                 ? base % lut_width == 0 ? lut_width : base % lut_width  // calculate its width
         //                 : lut_width;    // its a full unit
 
+        // base 10   lut 2   unit 4  rt 0
         for (iterator_NaryRecursionGetUnitWidth=0; base>0; iterator_NaryRecursionGetUnitWidth=iterator_NaryRecursionGetUnitWidth) begin
             if( base == 1 ) begin
+                $display("error: base:%d lut:%d unit:%d results:%d", base, lut_width, unit, results);
+
                 iterator_NaryRecursionGetUnitWidth = 0;
-                base = 0;
+                base = 0;   // bug fix, I shouldn't use exit conditions in results calculations.
             end else begin
                 if( (results + `next_level_unit_count) <= unit ) begin
-                    base = `next_level_unit_count;
+                    $display("next level: base:%d lut:%d unit:%d results:%d", base, lut_width, unit, results);
                     results = results + `next_level_unit_count;
+                    base = `next_level_unit_count;
                 end else begin
-                    base = 0;
-                    if( (unit - results ) == `next_level_unit_count-1 ) begin
+                    $write("this level: base:%d lut:%d unit:%d results:%d", base, lut_width, unit, results);
+                    if( (unit - results ) == `next_level_unit_count - 1 ) begin
                         iterator_NaryRecursionGetUnitWidth = base % lut_width == 0 ? lut_width : base % lut_width;
                     end else begin
                         iterator_NaryRecursionGetUnitWidth = lut_width;
                     end
+                    base = 0;
+                   $display(" answer:%d", iterator_NaryRecursionGetUnitWidth);
                 end
             end
         end
     end
     `undef next_level_unit_count 
 endfunction
-    // initial begin:test_NaryRecursionGetLastUnitWidth integer unit_index, test_lut_width;$display("test_NaryRecursionGetLastUnitWidth()");for(test_lut_width=2; test_lut_width < 5; test_lut_width = test_lut_width + 1)for(unit_index=0; unit_index < 11; unit_index = unit_index + 1)$display("rt:%d",f_NaryRecursionGetUnitWidth(10,test_lut_width,unit_index));end
+    // initial begin:test_NaryRecursionGetLastUnitWidth integer unit_index, test_lut_width;$display("test_NaryRecursionGetLastUnitWidth()");for(test_lut_width=2; test_lut_width < 5; test_lut_width = test_lut_width + 1)for(unit_index=0; unit_index < 11; unit_index = unit_index + 1)$display("\tbase:10 lut_width: %d unit_index: %d rt:%d", test_lut_width, unit_index, f_NaryRecursionGetUnitWidth(10,test_lut_width,unit_index));end
 
 //  f_NaryRecursionGetDepth - Returns the depth of the structure
 //  base        - Total number of input bits to operate on
