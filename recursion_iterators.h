@@ -163,7 +163,6 @@ function automatic integer iterator_TailRecursionGetUnitInputAddress;
 endfunction
     // initial begin:test_TailRecursionGetUnitInputAddress integer unit_index,input_index;$display("f_TailRecursionGetUnitInputAddress");$display("\t\t\tBase:10 LUT_WIDTH:4 LUT_COUNT:3");for(unit_index=0;unit_index<3;unit_index=unit_index+1)for( input_index=0;input_index<4;input_index=input_index+1)$display("unit:%d input:%d address:%d",unit_index,input_index,f_TailRecursionGetUnitInputAddress(10,4,unit_index,input_index));end
 
-//
     ///////////////////////////////////////////
     // N-ary tree Iteration Functions        //
     // f_NaryRecursionGetVectorSize          //
@@ -239,28 +238,26 @@ function automatic integer iterator_NaryRecursionGetUnitWidth;
         //             : (unit - results ) == `next_level_unit_count-1 // if this is the last unit in this layer
         //                 ? base % lut_width == 0 ? lut_width : base % lut_width  // calculate its width
         //                 : lut_width;    // its a full unit
-
-        // base 10   lut 2   unit 4  rt 0
         for (iterator_NaryRecursionGetUnitWidth=0; base>0; iterator_NaryRecursionGetUnitWidth=iterator_NaryRecursionGetUnitWidth) begin
             if( base == 1 ) begin
-                $display("error: base:%d lut:%d unit:%d results:%d", base, lut_width, unit, results);
+                // $display("error: base:%d lut:%d unit:%d results:%d", base, lut_width, unit, results);
 
                 iterator_NaryRecursionGetUnitWidth = 0;
                 base = 0;   // bug fix, I shouldn't use exit conditions in results calculations.
             end else begin
                 if( (results + `next_level_unit_count) <= unit ) begin
-                    $display("next level: base:%d lut:%d unit:%d results:%d", base, lut_width, unit, results);
+                    // $display("next level: base:%d lut:%d unit:%d results:%d", base, lut_width, unit, results);
                     results = results + `next_level_unit_count;
                     base = `next_level_unit_count;
                 end else begin
-                    $write("this level: base:%d lut:%d unit:%d results:%d", base, lut_width, unit, results);
+                    // $write("this level: base:%d lut:%d unit:%d results:%d", base, lut_width, unit, results);
                     if( (unit - results ) == `next_level_unit_count - 1 ) begin
                         iterator_NaryRecursionGetUnitWidth = base % lut_width == 0 ? lut_width : base % lut_width;
                     end else begin
                         iterator_NaryRecursionGetUnitWidth = lut_width;
                     end
                     base = 0;
-                   $display(" answer:%d", iterator_NaryRecursionGetUnitWidth);
+                //    $display(" answer:%d", iterator_NaryRecursionGetUnitWidth);
                 end
             end
         end
