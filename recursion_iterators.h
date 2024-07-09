@@ -239,7 +239,8 @@ function automatic integer iterator_NaryRecursionGetUnitWidth;
         //             : (unit - results ) == `next_level_unit_count-1 // if this is the last unit in this layer
         //                 ? base % lut_width == 0 ? lut_width : base % lut_width  // calculate its width
         //                 : lut_width;    // its a full unit
-        for (iterator_NaryRecursionGetUnitWidth=0; base>0; iterator_NaryRecursionGetUnitWidth=iterator_NaryRecursionGetUnitWidth+1) begin
+
+        for (iterator_NaryRecursionGetUnitWidth=0; base>0; iterator_NaryRecursionGetUnitWidth=iterator_NaryRecursionGetUnitWidth) begin
             if( base == 1 ) begin
                 iterator_NaryRecursionGetUnitWidth = 0;
                 base = 0;
