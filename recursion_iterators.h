@@ -264,7 +264,7 @@ function automatic integer iterator_NaryRecursionGetUnitWidth;
     end
     `undef next_level_unit_count 
 endfunction
-    // initial begin:test_NaryRecursionGetLastUnitWidth integer unit_index, test_lut_width;$display("test_NaryRecursionGetLastUnitWidth()");for(test_lut_width=2; test_lut_width < 5; test_lut_width = test_lut_width + 1)for(unit_index=0; unit_index < 11; unit_index = unit_index + 1)$display("\tbase:10 lut_width: %d unit_index: %d rt:%d", test_lut_width, unit_index, f_NaryRecursionGetUnitWidth(10,test_lut_width,unit_index));end
+    // initial begin:test_f_NaryRecursionGetUnitWidth integer unit_index, test_lut_width;$display("test_f_NaryRecursionGetUnitWidth()");for(test_lut_width=2; test_lut_width < 5; test_lut_width = test_lut_width + 1) begin for(unit_index=0; unit_index < 11; unit_index = unit_index + 1)$display("\tbase:10\tlut_width:%d\tunit_index:%d\trt:%d", test_lut_width, unit_index, f_NaryRecursionGetUnitWidth(10,test_lut_width,unit_index));$display("");end end
 
 //  f_NaryRecursionGetDepth - Returns the depth of the structure
 //  base        - Total number of input bits to operate on
@@ -298,21 +298,29 @@ endfunction
 //
 // First Call f_NaryRecursionGetUnitDepth(CHUNK_COUNT, LUT_WIDTH, UNIT, 0 );
 function automatic integer f_NaryRecursionGetUnitDepth;
-    input integer base, lut_width, unit_index;         
-    f_NaryRecursionGetUnitDepth=iterator_NaryRecursionGetUnitDepth(base, lut_width, unit_index, 0);
+    input integer base, lut_width, unit_index;   
+    begin      
+        f_NaryRecursionGetUnitDepth=iterator_NaryRecursionGetUnitDepth(base, lut_width, unit_index, 0);
+        // $display("answer%d", f_NaryRecursionGetUnitDepth);
+    end
 endfunction
 function automatic integer iterator_NaryRecursionGetUnitDepth;
     input integer base, lut_width, unit_index, rt;   
-    iterator_NaryRecursionGetUnitDepth=
-        base >= unit_index
-            ?rt
-            :iterator_NaryRecursionGetUnitDepth(
-                base / lut_width * lut_width == base
-                    ? base / lut_width
-                    : base / lut_width + 1
-                ,lut_width, 
-                unit_index - base,
-                rt + 1);
+    begin : block_NaryRecursionGetUnitDepth
+        integer number_of_units_on_this_level;
+        number_of_units_on_this_level = (base / lut_width * lut_width == base ? base / lut_width : base / lut_width + 1);
+        // $display("iterator_NaryRecursionGetUnitDepth base%d lut_width%d unit_index%d rt%d nouotl%d", base, lut_width, unit_index, rt, number_of_units_on_this_level);
+        iterator_NaryRecursionGetUnitDepth=
+            base == 1
+                ? ~0 // error, unit is out of range
+                : number_of_units_on_this_level > unit_index
+                    ?rt
+                    :iterator_NaryRecursionGetUnitDepth(
+                        number_of_units_on_this_level,
+                        lut_width, 
+                        unit_index > number_of_units_on_this_level ? unit_index - number_of_units_on_this_level : 0,
+                        rt + 1);
+    end
 endfunction
     // initial begin:test_NaryRecursionGetUnitDepth integer idx;$display("f_NaryRecursionGetUnitDepth()");for(idx=0;idx<=10+f_NaryRecursionGetVectorSize(10,2);idx=idx+1)begin $display("\t\t\tbase:10 lut_width:2 unit:%d\tdepth:%d",idx,f_NaryRecursionGetUnitDepth(10,2,idx));end end
 
@@ -348,12 +356,43 @@ endfunction
 //  First Call iterator_NaryRecursionGetUnitInputAddress( CHUNK_COUNT, LUT_WIDTH, LUT_NUMBER, INPUT_NUMBER, 0, ~0, 0);
 function automatic integer f_NaryRecursionGetUnitInputAddress;
     input integer cmp_width, lut_width, unit_index, input_index;
-    f_NaryRecursionGetUnitInputAddress = iterator_NaryRecursionGetUnitInputAddress(cmp_width, lut_width, unit_index, input_index, 0);
+    begin : block_NaryRecursionGetUnitInputAddress
+        integer counter;
+        // $write("\tf_NaryRecursionGetUnitInputAddress()\t");
+        for( counter=0; counter < 100; counter = counter + 1 ) begin
+            f_NaryRecursionGetUnitInputAddress = iterator_NaryRecursionGetUnitInputAddress(cmp_width, lut_width, unit_index, input_index, 0);
+            // $write("A: %1d", f_NaryRecursionGetUnitInputAddress);
+            if( f_NaryRecursionGetUnitInputAddress >= cmp_width ) begin
+                // $write(" U%1d W%1d", f_NaryRecursionGetUnitInputAddress-cmp_width, f_NaryRecursionGetUnitWidth(cmp_width, lut_width, f_NaryRecursionGetUnitInputAddress-cmp_width) );
+                if( f_NaryRecursionGetUnitWidth(cmp_width, lut_width, f_NaryRecursionGetUnitInputAddress-cmp_width) != 1 ) begin
+                    counter = 100;
+                end else begin
+                    // $write("--");
+                    input_index = 0;
+                    unit_index = f_NaryRecursionGetUnitInputAddress-cmp_width;
+                end
+            end else begin
+                counter = 100;
+            end
+        end
+        // $display("");
+    end
 endfunction
+    //  base #  0___1   2___3   4___5   6___7   8___9   0___1___2   3___4___5   6___7___8   9   0___1___2___3   4___5___6___7   8___9
+    //              |       |       |       |       |           |           |           |   |               |               |       |
+    //             10______11      12______13      14          10__________11__________12  13              10______________11______12
+    //                      |               |       |                                   |   |                                       |
+    //                     15______________16      17                                  14__15                                      trigger
+    //                                      |       |                                       |
+    //                                     18______19                                    trigger
+    //                                              |
+    //                                            trigger
+
 function automatic integer iterator_NaryRecursionGetUnitInputAddress;
     input integer base_width, unit_width, unit_index, input_index, start_index;
     `define units_on_this_depth (base_width / unit_width * unit_width == base_width ? base_width / unit_width : base_width / unit_width + 1)
     begin
+        // $display( "base%d uw%d ui%d ii%d, start_index%d uotd%d unit_width%d", base_width, unit_width, unit_index, input_index, start_index, `units_on_this_depth, f_NaryRecursionGetUnitWidth(base_width, unit_width, unit_index) );
         iterator_NaryRecursionGetUnitInputAddress =
             // if the request is on a deeper recursion
             `units_on_this_depth <= unit_index
@@ -367,4 +406,4 @@ function automatic integer iterator_NaryRecursionGetUnitInputAddress;
     end
     `undef units_on_this_depth
 endfunction
-//    initial begin:test_NaryRecursionGetUnitInputAddress integer unit_index,input_index;$display("f_NaryRecursionGetUnitInputAddress");for(unit_index=0;unit_index<=3;unit_index=unit_index+1)for( input_index=0;input_index<4;input_index=input_index+1)$display("unit:%d input:%d address:%d width:%d",unit_index,input_index,f_NaryRecursionGetUnitInputAddress(10,4,unit_index,input_index), f_NaryRecursionGetUnitWidth(10, 4, unit_index));end
+    // initial begin:test_NaryRecursionGetUnitInputAddress integer unit_index,input_index;$display("f_NaryRecursionGetUnitInputAddress");for(unit_index=0;unit_index<=10;unit_index=unit_index+1)for( input_index=0;input_index<2;input_index=input_index+1)$display("unit: %1d\tinput: %1d\taddress: %1d\twidth: %1d",unit_index,input_index,f_NaryRecursionGetUnitInputAddress(10,2,unit_index,input_index), f_NaryRecursionGetUnitWidth(10, 2, unit_index));end
