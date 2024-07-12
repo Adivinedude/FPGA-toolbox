@@ -356,20 +356,25 @@ endfunction
 //  First Call iterator_NaryRecursionGetUnitInputAddress( CHUNK_COUNT, LUT_WIDTH, LUT_NUMBER, INPUT_NUMBER, 0, ~0, 0);
 function automatic integer f_NaryRecursionGetUnitInputAddress;
     input integer cmp_width, lut_width, unit_index, input_index;
-    begin : block_NaryRecursionGetUnitInputAddress
+            f_NaryRecursionGetUnitInputAddress = iterator_NaryRecursionGetUnitInputAddress(cmp_width, lut_width, unit_index, input_index, 0);
+endfunction
+
+function automatic integer f_NaryRecursionGetUnitInputAddressOptimized;
+    input integer cmp_width, lut_width, unit_index, input_index;
+    begin : block_NaryRecursionGetUnitInputAddressOptimized
         integer counter;
         // $write("\tf_NaryRecursionGetUnitInputAddress()\t");
-        for( counter=0; counter < 100; counter = counter + 1 ) begin
-            f_NaryRecursionGetUnitInputAddress = iterator_NaryRecursionGetUnitInputAddress(cmp_width, lut_width, unit_index, input_index, 0);
-            // $write("A: %1d", f_NaryRecursionGetUnitInputAddress);
-            if( f_NaryRecursionGetUnitInputAddress >= cmp_width ) begin
-                // $write(" U%1d W%1d", f_NaryRecursionGetUnitInputAddress-cmp_width, f_NaryRecursionGetUnitWidth(cmp_width, lut_width, f_NaryRecursionGetUnitInputAddress-cmp_width) );
-                if( f_NaryRecursionGetUnitWidth(cmp_width, lut_width, f_NaryRecursionGetUnitInputAddress-cmp_width) != 1 ) begin
+        for( counter=0; counter < 100; /*counter = counter + 1 */) begin
+            f_NaryRecursionGetUnitInputAddressOptimized = iterator_NaryRecursionGetUnitInputAddress(cmp_width, lut_width, unit_index, input_index, 0);
+            // $write("A: %1d", f_NaryRecursionGetUnitInputAddressOptimized);
+            if( f_NaryRecursionGetUnitInputAddressOptimized >= cmp_width ) begin
+                // $write(" U%1d W%1d", f_NaryRecursionGetUnitInputAddressOptimized-cmp_width, f_NaryRecursionGetUnitWidth(cmp_width, lut_width, f_NaryRecursionGetUnitInputAddressOptimized-cmp_width) );
+                if( f_NaryRecursionGetUnitWidth(cmp_width, lut_width, f_NaryRecursionGetUnitInputAddressOptimized-cmp_width) != 1 ) begin
                     counter = 100;
                 end else begin
                     // $write("--");
                     input_index = 0;
-                    unit_index = f_NaryRecursionGetUnitInputAddress-cmp_width;
+                    unit_index = f_NaryRecursionGetUnitInputAddressOptimized-cmp_width;
                 end
             end else begin
                 counter = 100;
@@ -378,6 +383,7 @@ function automatic integer f_NaryRecursionGetUnitInputAddress;
         // $display("");
     end
 endfunction
+
     //  base #  0___1   2___3   4___5   6___7   8___9   0___1___2   3___4___5   6___7___8   9   0___1___2___3   4___5___6___7   8___9
     //              |       |       |       |       |           |           |           |   |               |               |       |
     //             10______11      12______13      14          10__________11__________12  13              10______________11______12
