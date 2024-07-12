@@ -58,11 +58,15 @@ module mux_fixed_pipeline #(
         for( input_index = 0; input_index != f_GetUnitWidth(unit_index); input_index = input_index + 1 ) begin : mux_input_loop
             // perform the selection and store the output
             // initial $display( "unit_index:%d input_index:%d addr:%d", unit_index, input_index, f_GetAddress(unit_index, input_index) );
-            always @(posedge clk) begin
-                // $display("sel:%b unit:%d input:%d sel:%b depth:%d", sel, unit_index, input_index, sel[f_GetDepth(unit_index)*(MUX_SIZE/2)+:(MUX_SIZE/2)], f_GetDepth(unit_index));
-                if( sel[f_GetDepth(unit_index)*(MUX_SIZE/2)+:(MUX_SIZE/2)] == input_index )begin
-                    r_mux_structure[unit_index*WIDTH+:WIDTH] <= w_input_chain[f_GetAddress(unit_index, input_index)*WIDTH+:WIDTH];
+            if( f_GetUnitWidth(unit_index) != 1 ) begin
+                always @(posedge clk) begin
+                    // $display("sel:%b unit:%d input:%d sel:%b depth:%d", sel, unit_index, input_index, sel[f_GetDepth(unit_index)*(MUX_SIZE/2)+:(MUX_SIZE/2)], f_GetDepth(unit_index));
+                    if( sel[f_GetDepth(unit_index)*(MUX_SIZE/2)+:(MUX_SIZE/2)] == input_index )begin
+                        r_mux_structure[unit_index*WIDTH+:WIDTH] <= w_input_chain[f_GetAddress(unit_index, input_index)*WIDTH+:WIDTH];
+                    end
                 end
+            end else begin
+                always @(posedge clk) r_mux_structure[unit_index*WIDTH+:WIDTH] <= w_input_chain[f_GetAddress(unit_index, input_index)*WIDTH+:WIDTH];
             end
         end
     end
