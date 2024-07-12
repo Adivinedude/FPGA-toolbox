@@ -48,40 +48,53 @@ module mux_pipeline #(
     `else
         `include "recursion_iterators.h"
     `endif
-    //  LUT width 2 Unit Count 11 TYPE(0)-FIXED                   
-    //  base #  0___1   2___3   4___5   6___7   8___9
-    //              |       |       |       |       |
-    //             10______11      12______13      14
-    //                      |               |       |
-    //                     15______________16      17
+    //  LUT width 2     TYPE(0)-FIXED                   LUT width 4       TYPE(1)-Fixed
+    //  base #  0___1   2___3   4___5   6___7   8___9   0___1___2___3   4___5___6___7   8___9
+    //              |       |       |       |       |               |               |       |
+    //             10______11      12______13      14              10______________11______12
+    //                      |               |       |                                       |
+    //                     15______________16      17                                    trigger
     //                                      |       |
     //                                     18______19
     //                                              |
     //                                            trigger
 
+
     function automatic integer f_GetVectorSize;
         input unused;
-        f_GetVectorSize = f_NaryRecursionGetVectorSize( INPUT_COUNT, MUX_SIZE );
+        case(TYPE)
+            1:          f_GetVectorSize = f_NaryRecursionGetVectorSizeOptimized( INPUT_COUNT, MUX_SIZE );
+            default:    f_GetVectorSize = f_NaryRecursionGetVectorSize( INPUT_COUNT, MUX_SIZE );
+        endcase
     endfunction
 
     function automatic integer f_GetUnitWidth;
         input integer unit_index;
-        f_GetUnitWidth = f_NaryRecursionGetUnitWidth(INPUT_COUNT, MUX_SIZE, unit_index);
+        case(TYPE)
+            default:  f_GetUnitWidth = f_NaryRecursionGetUnitWidth(INPUT_COUNT, MUX_SIZE, unit_index);
+        endcase
     endfunction
 
     function automatic integer f_GetInputAddress;
     input integer unit_index, input_index;
-        f_GetInputAddress = f_NaryRecursionGetUnitInputAddress(INPUT_COUNT, MUX_SIZE, unit_index, input_index );
+        case(TYPE)
+            1:  f_GetInputAddress = f_NaryRecursionGetUnitInputAddressOptimized(INPUT_COUNT, MUX_SIZE, unit_index, input_index );
+            default:  f_GetInputAddress = f_NaryRecursionGetUnitInputAddress(INPUT_COUNT, MUX_SIZE, unit_index, input_index );
+        endcase
     endfunction
 
     function automatic integer f_GetUnitAddress;
     input integer unit_index;
-        f_GetUnitAddress = unit_index;
+        case(TYPE)
+            default:  f_GetUnitAddress = unit_index;
+        endcase
     endfunction
 
     function automatic integer f_GetDepth;
     input integer unit_index;
-        f_GetDepth = f_NaryRecursionGetUnitDepth(INPUT_COUNT, MUX_SIZE, unit_index);
+        case(TYPE)
+            default:  f_GetDepth = f_NaryRecursionGetUnitDepth(INPUT_COUNT, MUX_SIZE, unit_index);
+        endcase
     endfunction
 
     // find the size of the vector needed
@@ -122,7 +135,7 @@ module mux_tb;
     wire    [3:0]   out;
     reg     [7:0]   sel = 0;
 
-    mux_pipeline#(.WIDTH(4), .INPUT_COUNT(10))
+    mux_pipeline#(.WIDTH(4), .INPUT_COUNT(10), .TYPE(1) )
         UUT( .clk(clk), .sel(sel[7:4]), .in(in), .out(out) );
 
     always #1 clk <= ~clk;

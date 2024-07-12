@@ -166,11 +166,13 @@ endfunction
     ///////////////////////////////////////////
     // N-ary tree Iteration Functions        //
     // f_NaryRecursionGetVectorSize          //
+    // f_NaryRecursionGetVectorSizeOptimized //
     // f_NaryRecursionGetUnitWidth           //
     // f_NaryRecursionGetDepth               //
     // f_NaryRecursionUnitDepth              //
     // f_NaryRecursionGetUnitWidthForLatency //
     // f_NaryRecursionGetUnitInputAddress    //
+    // f_NaryRecursionGetUnitInputAddressOptimized//
     //                                            
     // Intended to be used to perform a reducing operation on a vector in a pipelined manner 
     // By using a tree structure (N-ary), the operations latency can be controlled
@@ -196,6 +198,19 @@ function automatic integer f_NaryRecursionGetVectorSize;
     input integer base, lut_width;         
     f_NaryRecursionGetVectorSize=iterator_NaryRecursionVectorSize(base, lut_width, 0);
 endfunction
+
+function automatic integer f_NaryRecursionGetVectorSizeOptimized;
+    input integer base, lut_width;
+    begin : block_NaryRecursionGetVectorSizeOptimized
+        integer unit_index;
+        f_NaryRecursionGetVectorSizeOptimized = f_NaryRecursionGetVectorSize(base, lut_width);
+        for(unit_index = f_NaryRecursionGetVectorSizeOptimized-1; unit_index != ~0; unit_index = unit_index - 1 ) begin
+            if( f_NaryRecursionGetUnitWidth(unit_index) == 1 )
+                f_NaryRecursionGetVectorSizeOptimized = f_NaryRecursionGetVectorSizeOptimized - 1;
+        end
+    end
+endfunction
+
 function automatic integer iterator_NaryRecursionVectorSize;
     input integer base, lut_width, rt;   
     iterator_NaryRecursionVectorSize=
