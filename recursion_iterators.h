@@ -384,16 +384,6 @@ function automatic integer f_NaryRecursionGetUnitInputAddressOptimized;
     end
 endfunction
 
-    //  base #  0___1   2___3   4___5   6___7   8___9   0___1___2   3___4___5   6___7___8   9   0___1___2___3   4___5___6___7   8___9
-    //              |       |       |       |       |           |           |           |   |               |               |       |
-    //             10______11      12______13      14          10__________11__________12  13              10______________11______12
-    //                      |               |       |                                   |   |                                       |
-    //                     15______________16      17                                  14__15                                      trigger
-    //                                      |       |                                       |
-    //                                     18______19                                    trigger
-    //                                              |
-    //                                            trigger
-
 function automatic integer iterator_NaryRecursionGetUnitInputAddress;
     input integer base_width, unit_width, unit_index, input_index, start_index;
     `define units_on_this_depth (base_width / unit_width * unit_width == base_width ? base_width / unit_width : base_width / unit_width + 1)

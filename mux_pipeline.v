@@ -30,11 +30,13 @@
 
 `default_nettype none
 // Multiplexer with a fixed output latency.
-module mux_fixed_pipeline #(
+module mux_pipeline #(
     parameter WIDTH = 4,
     parameter INPUT_COUNT = 2,
     parameter MUX_SIZE = 2, // must be a 2**N value, 2,4,8,16.....
-    parameter PRIORITY = 0  // 0 - fixed latency for all outputs, !0 priority given to MSB selection.
+    parameter TYPE = 0      // 0 - Fixed latency for all selections
+                            // 1 - Optimized structure - possible variable latency for a given selection
+                            // 2 - Prioritized structure - MSB selection will have smallest latency.
 )( clk, sel, in, out );
     input   wire                                clk;
     input   wire    [$clog2(INPUT_COUNT)-1:0]   sel;
@@ -46,7 +48,7 @@ module mux_fixed_pipeline #(
     `else
         `include "recursion_iterators.h"
     `endif
-    //  LUT width 2 Unit Count 11 PRIORITY-FIXED                   
+    //  LUT width 2 Unit Count 11 TYPE(0)-FIXED                   
     //  base #  0___1   2___3   4___5   6___7   8___9
     //              |       |       |       |       |
     //             10______11      12______13      14
@@ -67,9 +69,14 @@ module mux_fixed_pipeline #(
         f_GetUnitWidth = f_NaryRecursionGetUnitWidth(INPUT_COUNT, MUX_SIZE, unit_index);
     endfunction
 
-    function automatic integer f_GetAddress;
+    function automatic integer f_GetInputAddress;
     input integer unit_index, input_index;
-        f_GetAddress = f_NaryRecursionGetUnitInputAddress(INPUT_COUNT, MUX_SIZE, unit_index, input_index );
+        f_GetInputAddress = f_NaryRecursionGetUnitInputAddress(INPUT_COUNT, MUX_SIZE, unit_index, input_index );
+    endfunction
+
+    function automatic integer f_GetUnitAddress;
+    input integer unit_index;
+        f_GetUnitAddress = unit_index;
     endfunction
 
     function automatic integer f_GetDepth;
@@ -87,16 +94,16 @@ module mux_fixed_pipeline #(
     for( unit_index = 0; unit_index < STRUCTURE_SIZE; unit_index = unit_index + 1) begin : mux_unit_loop
         for( input_index = 0; input_index != f_GetUnitWidth(unit_index); input_index = input_index + 1 ) begin : mux_input_loop
             // perform the selection and store the output
-            // initial $display( "unit_index:%d input_index:%d addr:%d", unit_index, input_index, f_GetAddress(unit_index, input_index) );
+            // initial $display( "unit_index:%d input_index:%d addr:%d", unit_index, input_index, f_GetInputAddress(unit_index, input_index) );
             if( f_GetUnitWidth(unit_index) != 1 ) begin
                 always @(posedge clk) begin
                     // $display("sel:%b unit:%d input:%d sel:%b depth:%d", sel, unit_index, input_index, sel[f_GetDepth(unit_index)*(MUX_SIZE/2)+:(MUX_SIZE/2)], f_GetDepth(unit_index));
                     if( sel[f_GetDepth(unit_index)*(MUX_SIZE/2)+:(MUX_SIZE/2)] == input_index )begin
-                        r_mux_structure[unit_index*WIDTH+:WIDTH] <= w_input_chain[f_GetAddress(unit_index, input_index)*WIDTH+:WIDTH];
+                        r_mux_structure[unit_index*WIDTH+:WIDTH] <= w_input_chain[f_GetInputAddress(unit_index, input_index)*WIDTH+:WIDTH];
                     end
                 end
             end else begin
-                always @(posedge clk) r_mux_structure[unit_index*WIDTH+:WIDTH] <= w_input_chain[f_GetAddress(unit_index, input_index)*WIDTH+:WIDTH];
+                always @(posedge clk) r_mux_structure[unit_index*WIDTH+:WIDTH] <= w_input_chain[f_GetInputAddress(unit_index, input_index)*WIDTH+:WIDTH];
             end
         end
     end
@@ -115,7 +122,7 @@ module mux_tb;
     wire    [3:0]   out;
     reg     [7:0]   sel = 0;
 
-    mux_fixed_pipeline#(.WIDTH(4), .INPUT_COUNT(10))
+    mux_pipeline#(.WIDTH(4), .INPUT_COUNT(10))
         UUT( .clk(clk), .sel(sel[7:4]), .in(in), .out(out) );
 
     always #1 clk <= ~clk;
