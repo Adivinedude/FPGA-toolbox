@@ -364,7 +364,7 @@ function automatic integer f_NaryRecursionGetUnitInputAddressOptimized;
     begin : block_NaryRecursionGetUnitInputAddressOptimized
         integer counter;
         // $write("\tf_NaryRecursionGetUnitInputAddress()\t");
-        for( counter=0; counter < 100; /*counter = counter + 1 */) begin
+        for( counter=0; counter < 100; counter = counter + 1 ) begin
             f_NaryRecursionGetUnitInputAddressOptimized = iterator_NaryRecursionGetUnitInputAddress(cmp_width, lut_width, unit_index, input_index, 0);
             // $write("A: %1d", f_NaryRecursionGetUnitInputAddressOptimized);
             if( f_NaryRecursionGetUnitInputAddressOptimized >= cmp_width ) begin
