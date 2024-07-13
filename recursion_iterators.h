@@ -188,6 +188,17 @@ endfunction
     //                                              |
     //                                            trigger
 
+    //  LUT width 2 - OPTIMIZED
+    //  base #  0___1   2___3   4___5   6___7   8___9
+    //          U-0 |   U-1 |   U-2 |   U-3 |   U-4 |
+    //             10______11      12______13      14
+    //              U-5     |       U-6     |   U-7 |
+    //                     15______________16       X
+    //                      U-8             |   U-9 |
+    //                                     17_______X
+    //                                      U-10    |
+    //                                            trigger
+
 //  f_NaryRecursionGetVectorSize - Returns the number of LUT needed to build structure
 //  base        - Total number of input bits to operate on
 //  lut_width   - Maximum width of the LUT used.
@@ -204,10 +215,14 @@ function automatic integer f_NaryRecursionGetVectorSizeOptimized;
     begin : block_NaryRecursionGetVectorSizeOptimized
         integer unit_index;
         f_NaryRecursionGetVectorSizeOptimized = f_NaryRecursionGetVectorSize(base, lut_width);
+        $write("Reported size: %3d\tDropping units:", f_NaryRecursionGetVectorSizeOptimized);
         for(unit_index = f_NaryRecursionGetVectorSizeOptimized-1; unit_index != ~0; unit_index = unit_index - 1 ) begin
-            if( f_NaryRecursionGetUnitWidth(unit_index) == 1 )
+            if( f_NaryRecursionGetUnitWidth(base, lut_width, unit_index) == 1 ) begin
                 f_NaryRecursionGetVectorSizeOptimized = f_NaryRecursionGetVectorSizeOptimized - 1;
+                $write(" %3d", unit_index);
+            end
         end
+        $display("    final size: %3d", f_NaryRecursionGetVectorSizeOptimized);
     end
 endfunction
 
@@ -371,7 +386,7 @@ endfunction
 //  First Call iterator_NaryRecursionGetUnitInputAddress( CHUNK_COUNT, LUT_WIDTH, LUT_NUMBER, INPUT_NUMBER, 0, ~0, 0);
 function automatic integer f_NaryRecursionGetUnitInputAddress;
     input integer cmp_width, lut_width, unit_index, input_index;
-            f_NaryRecursionGetUnitInputAddress = iterator_NaryRecursionGetUnitInputAddress(cmp_width, lut_width, unit_index, input_index, 0);
+        f_NaryRecursionGetUnitInputAddress = iterator_NaryRecursionGetUnitInputAddress(cmp_width, lut_width, unit_index, input_index, 0);
 endfunction
 
 function automatic integer f_NaryRecursionGetUnitInputAddressOptimized;
@@ -418,3 +433,23 @@ function automatic integer iterator_NaryRecursionGetUnitInputAddress;
     `undef units_on_this_depth
 endfunction
     // initial begin:test_NaryRecursionGetUnitInputAddress integer unit_index,input_index;$display("f_NaryRecursionGetUnitInputAddress");for(unit_index=0;unit_index<=10;unit_index=unit_index+1)for( input_index=0;input_index<2;input_index=input_index+1)$display("unit: %1d\tinput: %1d\taddress: %1d\twidth: %1d",unit_index,input_index,f_NaryRecursionGetUnitInputAddress(10,2,unit_index,input_index), f_NaryRecursionGetUnitWidth(10, 2, unit_index));end
+
+function automatic integer f_NaryRecursionGetUnitOutputAddressOptimized;
+    input integer base, lut_width, unit_index;
+    begin : block_NaryRecursionGetVectorSizeOptimized
+        $write("Reported index: %3d\tDropping units:", f_NaryRecursionGetUnitOutputAddressOptimized);
+        for(f_NaryRecursionGetUnitOutputAddressOptimized = unit_index; unit_index != ~0; unit_index = unit_index - 1 ) begin
+            if( f_NaryRecursionGetUnitWidth(base, lut_width, unit_index) == 1 ) begin
+                if( f_NaryRecursionGetUnitOutputAddressOptimized == unit_index ) begin
+                    unit_index = ~0;
+                    f_NaryRecursionGetUnitOutputAddressOptimized = ~0;
+                    $write("Unit Requested has been removed");
+                end else begin
+                    f_NaryRecursionGetUnitOutputAddressOptimized = f_NaryRecursionGetUnitOutputAddressOptimized - 1;
+                    $write(" %3d", unit_index);
+                end
+            end
+        end
+        $display("    final index: %3d", f_NaryRecursionGetUnitOutputAddressOptimized);
+    end
+endfunction

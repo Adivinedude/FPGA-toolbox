@@ -50,22 +50,35 @@ module mux_pipeline #(
     `endif
     //  LUT width 2     TYPE(0)-FIXED                   LUT width 4       TYPE(1)-Fixed
     //  base #  0___1   2___3   4___5   6___7   8___9   0___1___2___3   4___5___6___7   8___9
-    //              |       |       |       |       |               |               |       |
+    //          U-0 |   U-1 |   U-2 |   U-3 |   U-4 |   U-0         |   U-1         |   U-2 |
     //             10______11      12______13      14              10______________11______12
-    //                      |               |       |                                       |
+    //              U-5     |       U-6     |   U-7 |               U-3                     |
     //                     15______________16      17                                    trigger
-    //                                      |       |
+    //                      U-8             |   U-9 |
     //                                     18______19
-    //                                              |
+    //                                      U-10    |
+    //                                            trigger
+
+    //  LUT width 2     TYPE(0)-OPTIMIZED               LUT width 4       TYPE(1)-OPTIMIZED
+    //  base #  0___1   2___3   4___5   6___7   8___9   0___1___2___3   4___5___6___7   8___9
+    //          U-0 |   U-1 |   U-2 |   U-3 |   U-4 |   U-0         |   U-1         |   U-2 |
+    //             10______11      12______13       |              10______________11______12
+    //              U-5     |       U-6     |   U-7 |               U-3                     |
+    //                     14______________15       |                                    trigger
+    //                      U-8             |   U-9 |
+    //                                     16______17
+    //                                      U-10    |
     //                                            trigger
 
 
     function automatic integer f_GetVectorSize;
         input unused;
-        case(TYPE)
-            1:          f_GetVectorSize = f_NaryRecursionGetVectorSizeOptimized( INPUT_COUNT, MUX_SIZE );
-            default:    f_GetVectorSize = f_NaryRecursionGetVectorSize( INPUT_COUNT, MUX_SIZE );
-        endcase
+        begin
+            case(TYPE)
+                1:          f_GetVectorSize = f_NaryRecursionGetVectorSizeOptimized( INPUT_COUNT, MUX_SIZE );
+                default:    f_GetVectorSize = f_NaryRecursionGetVectorSize( INPUT_COUNT, MUX_SIZE );
+            endcase
+        end
     endfunction
 
     function automatic integer f_GetUnitWidth;
@@ -83,10 +96,11 @@ module mux_pipeline #(
         endcase
     endfunction
 
-    function automatic integer f_GetUnitAddress;
+    function automatic integer f_GetUnitOutputAddress;
     input integer unit_index;
         case(TYPE)
-            default:  f_GetUnitAddress = unit_index;
+            1: f_GetUnitOutputAddress = f_NaryRecursionGetUnitOutputAddressOptimized(INPUT_COUNT, MUX_SIZE, unit_index);
+            default:  f_GetUnitOutputAddress = unit_index;
         endcase
     endfunction
 
@@ -99,6 +113,9 @@ module mux_pipeline #(
 
     // find the size of the vector needed
     localparam STRUCTURE_SIZE = f_GetVectorSize(0);
+    integer print_GetVectorSize;
+    initial print_GetVectorSize = f_GetVectorSize(0);
+    integer print_GetUnitOutputAddress;
     wire    [ ( ( INPUT_COUNT + STRUCTURE_SIZE ) * WIDTH ) - 1 : 0 ]    w_input_chain;
     reg     [ ( STRUCTURE_SIZE * WIDTH ) - 1 : 0 ]                      r_mux_structure;
     assign w_input_chain = { r_mux_structure, in };
@@ -108,15 +125,18 @@ module mux_pipeline #(
         for( input_index = 0; input_index != f_GetUnitWidth(unit_index); input_index = input_index + 1 ) begin : mux_input_loop
             // perform the selection and store the output
             // initial $display( "unit_index:%d input_index:%d addr:%d", unit_index, input_index, f_GetInputAddress(unit_index, input_index) );
-            if( f_GetUnitWidth(unit_index) != 1 ) begin
-                always @(posedge clk) begin
-                    // $display("sel:%b unit:%d input:%d sel:%b depth:%d", sel, unit_index, input_index, sel[f_GetDepth(unit_index)*(MUX_SIZE/2)+:(MUX_SIZE/2)], f_GetDepth(unit_index));
-                    if( sel[f_GetDepth(unit_index)*(MUX_SIZE/2)+:(MUX_SIZE/2)] == input_index )begin
-                        r_mux_structure[unit_index*WIDTH+:WIDTH] <= w_input_chain[f_GetInputAddress(unit_index, input_index)*WIDTH+:WIDTH];
+            initial print_GetUnitOutputAddress = f_GetUnitOutputAddress(unit_index);
+            if( f_GetUnitOutputAddress(unit_index) != ~0 ) begin
+                if( f_GetUnitWidth(unit_index) != 1 ) begin
+                    always @(posedge clk) begin
+                        // $display("sel:%b unit:%d input:%d sel:%b depth:%d", sel, unit_index, input_index, sel[f_GetDepth(unit_index)*(MUX_SIZE/2)+:(MUX_SIZE/2)], f_GetDepth(unit_index));
+                        if( sel[f_GetDepth(unit_index)*(MUX_SIZE/2)+:(MUX_SIZE/2)] == input_index )begin
+                            r_mux_structure[f_GetUnitOutputAddress(unit_index)*WIDTH+:WIDTH] <= w_input_chain[f_GetInputAddress(unit_index, input_index)*WIDTH+:WIDTH];
+                        end
                     end
+                end else begin
+                    always @(posedge clk) r_mux_structure[f_GetUnitOutputAddress(unit_index)*WIDTH+:WIDTH] <= w_input_chain[f_GetInputAddress(unit_index, input_index)*WIDTH+:WIDTH];
                 end
-            end else begin
-                always @(posedge clk) r_mux_structure[unit_index*WIDTH+:WIDTH] <= w_input_chain[f_GetInputAddress(unit_index, input_index)*WIDTH+:WIDTH];
             end
         end
     end
