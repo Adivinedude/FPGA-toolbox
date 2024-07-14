@@ -172,7 +172,8 @@ endfunction
     // f_NaryRecursionUnitDepth              //
     // f_NaryRecursionGetUnitWidthForLatency //
     // f_NaryRecursionGetUnitInputAddress    //
-    // f_NaryRecursionGetUnitInputAddressOptimized//
+    // f_NaryRecursionGetUnitInputAddressOptimized //
+    // f_NaryRecursionGetUnitOutputAddressOptimized//
     //                                            
     // Intended to be used to perform a reducing operation on a vector in a pipelined manner 
     // By using a tree structure (N-ary), the operations latency can be controlled
@@ -392,17 +393,20 @@ endfunction
 function automatic integer f_NaryRecursionGetUnitInputAddressOptimized;
     input integer cmp_width, lut_width, unit_index, input_index;
     begin : block_NaryRecursionGetUnitInputAddressOptimized
-        integer counter;
-        // $write("\tf_NaryRecursionGetUnitInputAddress()\t");
+        integer counter, save_unit_index, write_correction;
+        write_correction = 0;
+        $write("f_NaryRecursionGetUnitInputAddressOptimized()\t");
+        // Iterate through the address and find its source.
+        save_unit_index = unit_index;
         for( counter=0; counter < 100; counter = counter + 1 ) begin
             f_NaryRecursionGetUnitInputAddressOptimized = iterator_NaryRecursionGetUnitInputAddress(cmp_width, lut_width, unit_index, input_index, 0);
-            // $write("A: %1d", f_NaryRecursionGetUnitInputAddressOptimized);
+            $write("A: %1d", f_NaryRecursionGetUnitInputAddressOptimized);
             if( f_NaryRecursionGetUnitInputAddressOptimized >= cmp_width ) begin
-                // $write(" U%1d W%1d", f_NaryRecursionGetUnitInputAddressOptimized-cmp_width, f_NaryRecursionGetUnitWidth(cmp_width, lut_width, f_NaryRecursionGetUnitInputAddressOptimized-cmp_width) );
+                $write(" U%1d W%1d", f_NaryRecursionGetUnitInputAddressOptimized-cmp_width, f_NaryRecursionGetUnitWidth(cmp_width, lut_width, f_NaryRecursionGetUnitInputAddressOptimized-cmp_width) );
                 if( f_NaryRecursionGetUnitWidth(cmp_width, lut_width, f_NaryRecursionGetUnitInputAddressOptimized-cmp_width) != 1 ) begin
                     counter = 100;
                 end else begin
-                    // $write("--");
+                    $write("--");
                     input_index = 0;
                     unit_index = f_NaryRecursionGetUnitInputAddressOptimized-cmp_width;
                 end
@@ -410,7 +414,22 @@ function automatic integer f_NaryRecursionGetUnitInputAddressOptimized;
                 counter = 100;
             end
         end
-        // $display("");
+        // Apply offset correction for removed units.
+        unit_index = save_unit_index;
+        for( counter=0; counter < 100 && unit_index != ~0; counter = counter + 1 ) begin
+            unit_index = unit_index - 1;
+            // if inputs are more than a skipped input
+            if( f_NaryRecursionGetUnitWidth(cmp_width, lut_width, unit_index) == 1 ) begin
+                if( unit_index + cmp_width < f_NaryRecursionGetUnitInputAddressOptimized ) begin
+                    if( write_correction == 0 )
+                        $write(" correction");
+                    write_correction = 1;
+                    $write(" U%1d", unit_index);
+                    f_NaryRecursionGetUnitInputAddressOptimized = f_NaryRecursionGetUnitInputAddressOptimized - 1;
+                end
+            end
+        end
+        $display("");
     end
 endfunction
 
@@ -437,19 +456,19 @@ endfunction
 function automatic integer f_NaryRecursionGetUnitOutputAddressOptimized;
     input integer base, lut_width, unit_index;
     begin : block_NaryRecursionGetVectorSizeOptimized
-        $write("Reported index: %3d\tDropping units:", f_NaryRecursionGetUnitOutputAddressOptimized);
+        // $write("Reported index: %1d\tDropped units:", unit_index);
         for(f_NaryRecursionGetUnitOutputAddressOptimized = unit_index; unit_index != ~0; unit_index = unit_index - 1 ) begin
             if( f_NaryRecursionGetUnitWidth(base, lut_width, unit_index) == 1 ) begin
                 if( f_NaryRecursionGetUnitOutputAddressOptimized == unit_index ) begin
-                    unit_index = ~0;
+                    unit_index = 0;
                     f_NaryRecursionGetUnitOutputAddressOptimized = ~0;
-                    $write("Unit Requested has been removed");
+                    // $write("Unit Requested has been removed");
                 end else begin
                     f_NaryRecursionGetUnitOutputAddressOptimized = f_NaryRecursionGetUnitOutputAddressOptimized - 1;
-                    $write(" %3d", unit_index);
+                    // $write(" %1d", unit_index);
                 end
             end
         end
-        $display("    final index: %3d", f_NaryRecursionGetUnitOutputAddressOptimized);
+        // $display("    final index: %3d", f_NaryRecursionGetUnitOutputAddressOptimized);
     end
 endfunction
