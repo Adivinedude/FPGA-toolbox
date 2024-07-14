@@ -119,14 +119,14 @@ module mux_pipeline #(
     assign out = w_input_chain[ ( ( INPUT_COUNT + STRUCTURE_SIZE - 1 ) * WIDTH ) +: WIDTH ];
     genvar unit_index, input_index;
     for( unit_index = 0; unit_index < f_NaryRecursionGetVectorSize( INPUT_COUNT, MUX_SIZE ); unit_index = unit_index + 1) begin : mux_unit_loop
-        initial $display("unit_index: %1d output_index: %1d", unit_index, f_GetUnitOutputAddress(unit_index)!=~0?f_GetUnitOutputAddress(unit_index)+INPUT_COUNT:~0);
+        // initial $display("unit_index: %1d output_index: %1d", unit_index, f_GetUnitOutputAddress(unit_index)!=~0?f_GetUnitOutputAddress(unit_index)+INPUT_COUNT:~0);
         if( f_GetUnitOutputAddress(unit_index) != ~0 ) begin
             for( input_index = 0; input_index != f_GetUnitWidth(unit_index); input_index = input_index + 1 ) begin : mux_input_loop
                 // perform the selection and store the output
-                initial $display( "unit_index: %1d input_index: %2d addr:%1d", unit_index, input_index, f_GetInputAddress(unit_index, input_index) );
+                // initial $display( "unit_index: %1d input_index: %2d addr:%1d", unit_index, input_index, f_GetInputAddress(unit_index, input_index) );
                 if( f_GetUnitWidth(unit_index) != 1 ) begin
                     always @(posedge clk) begin
-                        $display("sel:%b unit:%d input:%d sel:%b depth:%d", sel, unit_index, input_index, sel[f_GetDepth(unit_index)*(MUX_SIZE/2)+:(MUX_SIZE/2)], f_GetDepth(unit_index));
+                        // $display("sel:%b unit:%d input:%d sel:%b depth:%d", sel, unit_index, input_index, sel[f_GetDepth(unit_index)*(MUX_SIZE/2)+:(MUX_SIZE/2)], f_GetDepth(unit_index));
                         if( sel[f_GetDepth(unit_index)*(MUX_SIZE/2)+:(MUX_SIZE/2)] == input_index )begin
                             r_mux_structure[f_GetUnitOutputAddress(unit_index)*WIDTH+:WIDTH] <= w_input_chain[f_GetInputAddress(unit_index, input_index)*WIDTH+:WIDTH];
                         end
