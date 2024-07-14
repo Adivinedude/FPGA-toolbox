@@ -216,14 +216,14 @@ function automatic integer f_NaryRecursionGetVectorSizeOptimized;
     begin : block_NaryRecursionGetVectorSizeOptimized
         integer unit_index;
         f_NaryRecursionGetVectorSizeOptimized = f_NaryRecursionGetVectorSize(base, lut_width);
-        $write("Reported size: %3d\tDropping units:", f_NaryRecursionGetVectorSizeOptimized);
+        // $write("Reported size: %3d\tDropping units:", f_NaryRecursionGetVectorSizeOptimized);
         for(unit_index = f_NaryRecursionGetVectorSizeOptimized-1; unit_index != ~0; unit_index = unit_index - 1 ) begin
             if( f_NaryRecursionGetUnitWidth(base, lut_width, unit_index) == 1 ) begin
                 f_NaryRecursionGetVectorSizeOptimized = f_NaryRecursionGetVectorSizeOptimized - 1;
-                $write(" %3d", unit_index);
+                // $write(" %3d", unit_index);
             end
         end
-        $display("    final size: %3d", f_NaryRecursionGetVectorSizeOptimized);
+        // $display("    final size: %3d", f_NaryRecursionGetVectorSizeOptimized);
     end
 endfunction
 
@@ -395,18 +395,18 @@ function automatic integer f_NaryRecursionGetUnitInputAddressOptimized;
     begin : block_NaryRecursionGetUnitInputAddressOptimized
         integer counter, save_unit_index, write_correction;
         write_correction = 0;
-        $write("f_NaryRecursionGetUnitInputAddressOptimized()\t");
+        // $write("f_NaryRecursionGetUnitInputAddressOptimized()\t");
         // Iterate through the address and find its source.
         save_unit_index = unit_index;
         for( counter=0; counter < 100; counter = counter + 1 ) begin
             f_NaryRecursionGetUnitInputAddressOptimized = iterator_NaryRecursionGetUnitInputAddress(cmp_width, lut_width, unit_index, input_index, 0);
-            $write("A: %1d", f_NaryRecursionGetUnitInputAddressOptimized);
+            // $write("A: %1d", f_NaryRecursionGetUnitInputAddressOptimized);
             if( f_NaryRecursionGetUnitInputAddressOptimized >= cmp_width ) begin
-                $write(" U%1d W%1d", f_NaryRecursionGetUnitInputAddressOptimized-cmp_width, f_NaryRecursionGetUnitWidth(cmp_width, lut_width, f_NaryRecursionGetUnitInputAddressOptimized-cmp_width) );
+                // $write(" U%1d W%1d", f_NaryRecursionGetUnitInputAddressOptimized-cmp_width, f_NaryRecursionGetUnitWidth(cmp_width, lut_width, f_NaryRecursionGetUnitInputAddressOptimized-cmp_width) );
                 if( f_NaryRecursionGetUnitWidth(cmp_width, lut_width, f_NaryRecursionGetUnitInputAddressOptimized-cmp_width) != 1 ) begin
                     counter = 100;
                 end else begin
-                    $write("--");
+                    // $write("--");
                     input_index = 0;
                     unit_index = f_NaryRecursionGetUnitInputAddressOptimized-cmp_width;
                 end
@@ -422,14 +422,14 @@ function automatic integer f_NaryRecursionGetUnitInputAddressOptimized;
             if( f_NaryRecursionGetUnitWidth(cmp_width, lut_width, unit_index) == 1 ) begin
                 if( unit_index + cmp_width < f_NaryRecursionGetUnitInputAddressOptimized ) begin
                     if( write_correction == 0 )
-                        $write(" correction");
+                        // $write(" correction");
                     write_correction = 1;
-                    $write(" U%1d", unit_index);
+                    // $write(" U%1d", unit_index);
                     f_NaryRecursionGetUnitInputAddressOptimized = f_NaryRecursionGetUnitInputAddressOptimized - 1;
                 end
             end
         end
-        $display("");
+        // $display("");
     end
 endfunction
 
