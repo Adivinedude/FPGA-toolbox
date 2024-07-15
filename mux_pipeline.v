@@ -3,7 +3,7 @@
 // Filename:	mux_pipeline.v
 //
 // Project:	mux_pipeline
-// Status: Incomplete,
+// Status: Beta,
 // Notes: register optimization is not fully implemented. #91-96 does not properly handle the new optimizations
 // Purpose:	A variable width multiplexer for high speed designs.
 //
@@ -33,7 +33,7 @@
 module mux_pipeline #(
     parameter WIDTH = 4,
     parameter INPUT_COUNT = 2,
-    parameter MUX_SIZE = 2, // must be a 2**N value, 2,4,8,16.....
+    parameter LATENCY = 0, 
     parameter TYPE = 0      // 0 - Fixed latency for all selections
                             // 1 - Optimized structure - possible variable latency for a given selection
                             // 2 - Prioritized structure - MSB selection will have smallest latency.
@@ -70,7 +70,20 @@ module mux_pipeline #(
     //                                      U-10    |
     //                                            trigger
 
+    function automatic integer f_GetMuxSize;
+        input unused;
+        begin
+            case(TYPE)
+                default:    f_GetMuxSize = f_NaryRecursionGetUnitWidthForLatency(INPUT_COUNT, LATENCY);
+            endcase
+            $display("f_GetMuxSize: L:%1d\tIC:%1d \t%1d\t%1d",LATENCY, INPUT_COUNT, f_GetMuxSize, 'd1 << $clog2(f_GetMuxSize));
+            f_GetMuxSize = 'd1 << $clog2(f_GetMuxSize);
+        end
+    endfunction
 
+    localparam MUX_SIZE = 0;//f_GetMuxSize(0);// must be a 2**N value, 2,4,8,16.....
+    reg t;
+    initial t = f_GetMuxSize(0);
     function automatic integer f_GetVectorSize;
         input unused;
         begin
@@ -119,11 +132,11 @@ module mux_pipeline #(
     assign out = w_input_chain[ ( ( INPUT_COUNT + STRUCTURE_SIZE - 1 ) * WIDTH ) +: WIDTH ];
     genvar unit_index, input_index;
     for( unit_index = 0; unit_index < f_NaryRecursionGetVectorSize( INPUT_COUNT, MUX_SIZE ); unit_index = unit_index + 1) begin : mux_unit_loop
-        // initial $display("unit_index: %1d output_index: %1d", unit_index, f_GetUnitOutputAddress(unit_index)!=~0?f_GetUnitOutputAddress(unit_index)+INPUT_COUNT:~0);
+        initial $display("unit_index: %1d output_index: %1d", unit_index, f_GetUnitOutputAddress(unit_index)!=~0?f_GetUnitOutputAddress(unit_index)+INPUT_COUNT:~0);
         if( f_GetUnitOutputAddress(unit_index) != ~0 ) begin
             for( input_index = 0; input_index != f_GetUnitWidth(unit_index); input_index = input_index + 1 ) begin : mux_input_loop
                 // perform the selection and store the output
-                // initial $display( "unit_index: %1d input_index: %2d addr:%1d", unit_index, input_index, f_GetInputAddress(unit_index, input_index) );
+                initial $display( "unit_index: %1d input_index: %2d addr:%1d", unit_index, input_index, f_GetInputAddress(unit_index, input_index) );
                 if( f_GetUnitWidth(unit_index) != 1 ) begin
                     always @(posedge clk) begin
                         // $display("sel:%b unit:%d input:%d sel:%b depth:%d", sel, unit_index, input_index, sel[f_GetDepth(unit_index)*(MUX_SIZE/2)+:(MUX_SIZE/2)], f_GetDepth(unit_index));
