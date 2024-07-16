@@ -369,9 +369,11 @@ endfunction
 function automatic integer iterator_NaryRecursionGetUnitWidthForLatency;
     input integer base, latency, lut_width;
     iterator_NaryRecursionGetUnitWidthForLatency=
-        (f_NaryRecursionGetDepth(base,lut_width)<=latency)
-            ?lut_width
-            :iterator_NaryRecursionGetUnitWidthForLatency(base,latency,lut_width+1);
+        latency==0
+            ?base
+            :(f_NaryRecursionGetDepth(base,lut_width)<=latency)
+                ?lut_width
+                :iterator_NaryRecursionGetUnitWidthForLatency(base,latency,lut_width+1);
 endfunction
     // initial begin:test_NaryRecursionGetLastUnitWidthForLatency integer idx;$display("f_NaryRecursionGetUnitWidthForLatency()");for(idx=1;idx<=10;idx=idx+1)begin $display("\t\t\tbase:10 latency:%d lut_width:%d",idx,f_NaryRecursionGetUnitWidthForLatency(10,idx));end end
 

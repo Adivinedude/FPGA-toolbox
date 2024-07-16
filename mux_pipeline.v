@@ -30,14 +30,63 @@
 
 `default_nettype none
 // Multiplexer with a fixed output latency.
+
 module mux_pipeline #(
-    parameter WIDTH = 4,
+    parameter WIDTH = 1,
+    parameter INPUT_COUNT = 2,
+    parameter LATENCY = 0,
+    parameter TYPE = 0
+)( clk, sel, in, out );
+    input   wire                                clk;
+    input   wire    [$clog2(INPUT_COUNT)-1:0]   sel;
+    input   wire    [(WIDTH*INPUT_COUNT)-1:0]   in;
+    output  wire    [WIDTH-1:0]                 out;
+    `ifndef FORMAL
+        `include "./toolbox/recursion_iterators.h"
+    `else
+        `include "recursion_iterators.h"
+    `endif
+
+    function automatic integer f_GetMuxSize;
+        input unused;
+        begin
+            case(TYPE)
+                default:    f_GetMuxSize = f_NaryRecursionGetUnitWidthForLatency(INPUT_COUNT, LATENCY);
+            endcase
+            $display("f_GetMuxSize: L:%1d\tIC:%1d \t%1d\t%1d",LATENCY, INPUT_COUNT, f_GetMuxSize, 'd1 << $clog2(f_GetMuxSize));
+            f_GetMuxSize = 'd1 << $clog2(f_GetMuxSize);
+        end
+    endfunction
+    localparam MUX_SIZE = f_GetMuxSize(0);
+
+    function automatic integer f_GetVectorSize;
+        input unused;
+        begin
+            case(TYPE)
+                1:          f_GetVectorSize = f_NaryRecursionGetVectorSizeOptimized( INPUT_COUNT, MUX_SIZE );
+                default:    f_GetVectorSize = f_NaryRecursionGetVectorSize( INPUT_COUNT, MUX_SIZE );
+            endcase
+        end
+    endfunction
+
+    localparam STRUCTURE_SIZE = f_GetVectorSize(0);
+    reg     [(STRUCTURE_SIZE*WIDTH)-1:0]    r_in_pipeline = 0;
+    wire    [(STRUCTURE_SIZE*WIDTH)-1:0]    w_out_pipeline;
+
+    mux_combinational #(.WIDTH(WIDTH), .INPUT_COUNT(INPUT_COUNT), .LATENCY(LATENCY), .TYPE(TYPE) )
+        mux_object(.clk(clk), .sel(sel), .in(in), .in_pipeline(r_in_pipeline), .out(out), .out_pipeline(w_out_pipeline) );
+    
+    always @( posedge clk ) r_in_pipeline <= w_out_pipeline;
+endmodule
+
+module mux_combinational #(
+    parameter WIDTH = 1,
     parameter INPUT_COUNT = 2,
     parameter LATENCY = 0, 
     parameter TYPE = 0      // 0 - Fixed latency for all selections
                             // 1 - Optimized structure - possible variable latency for a given selection
                             // 2 - Prioritized structure - MSB selection will have smallest latency.
-)( clk, sel, in, out );
+)( clk, sel, in, in_pipeline, out, out_pipeline );
     input   wire                                clk;
     input   wire    [$clog2(INPUT_COUNT)-1:0]   sel;
     input   wire    [(WIDTH*INPUT_COUNT)-1:0]   in;
@@ -76,14 +125,11 @@ module mux_pipeline #(
             case(TYPE)
                 default:    f_GetMuxSize = f_NaryRecursionGetUnitWidthForLatency(INPUT_COUNT, LATENCY);
             endcase
-            $display("f_GetMuxSize: L:%1d\tIC:%1d \t%1d\t%1d",LATENCY, INPUT_COUNT, f_GetMuxSize, 'd1 << $clog2(f_GetMuxSize));
+            // $display("f_GetMuxSize: L:%1d\tIC:%1d \t%1d\t%1d",LATENCY, INPUT_COUNT, f_GetMuxSize, 'd1 << $clog2(f_GetMuxSize));
             f_GetMuxSize = 'd1 << $clog2(f_GetMuxSize);
         end
     endfunction
-
-    localparam MUX_SIZE = 0;//f_GetMuxSize(0);// must be a 2**N value, 2,4,8,16.....
-    reg t;
-    initial t = f_GetMuxSize(0);
+    localparam MUX_SIZE = f_GetMuxSize(0);
     function automatic integer f_GetVectorSize;
         input unused;
         begin
@@ -117,39 +163,53 @@ module mux_pipeline #(
         endcase
     endfunction
 
-    function automatic integer f_GetDepth;
+    function automatic integer f_GetUnitDepth;
     input integer unit_index;
         case(TYPE)
-            default:  f_GetDepth = f_NaryRecursionGetUnitDepth(INPUT_COUNT, MUX_SIZE, unit_index);
+            default:  f_GetUnitDepth = f_NaryRecursionGetUnitDepth(INPUT_COUNT, MUX_SIZE, unit_index);
+        endcase
+    endfunction
+
+    function automatic integer f_GetStructureDepth;
+    input integer unused;
+        case(TYPE)
+            default: f_GetStructureDepth = f_NaryRecursionGetDepth(INPUT_COUNT, MUX_SIZE);
         endcase
     endfunction
 
     // find the size of the vector needed
     localparam STRUCTURE_SIZE = f_GetVectorSize(0);
-    wire    [ ( ( INPUT_COUNT + STRUCTURE_SIZE ) * WIDTH ) - 1 : 0 ]    w_input_chain;
-    reg     [ ( STRUCTURE_SIZE * WIDTH ) - 1 : 0 ]                      r_mux_structure;
-    assign w_input_chain = { r_mux_structure, in };
-    assign out = w_input_chain[ ( ( INPUT_COUNT + STRUCTURE_SIZE - 1 ) * WIDTH ) +: WIDTH ];
-    genvar unit_index, input_index;
-    for( unit_index = 0; unit_index < f_NaryRecursionGetVectorSize( INPUT_COUNT, MUX_SIZE ); unit_index = unit_index + 1) begin : mux_unit_loop
-        initial $display("unit_index: %1d output_index: %1d", unit_index, f_GetUnitOutputAddress(unit_index)!=~0?f_GetUnitOutputAddress(unit_index)+INPUT_COUNT:~0);
-        if( f_GetUnitOutputAddress(unit_index) != ~0 ) begin
-            for( input_index = 0; input_index != f_GetUnitWidth(unit_index); input_index = input_index + 1 ) begin : mux_input_loop
-                // perform the selection and store the output
-                initial $display( "unit_index: %1d input_index: %2d addr:%1d", unit_index, input_index, f_GetInputAddress(unit_index, input_index) );
-                if( f_GetUnitWidth(unit_index) != 1 ) begin
-                    always @(posedge clk) begin
-                        // $display("sel:%b unit:%d input:%d sel:%b depth:%d", sel, unit_index, input_index, sel[f_GetDepth(unit_index)*(MUX_SIZE/2)+:(MUX_SIZE/2)], f_GetDepth(unit_index));
-                        if( sel[f_GetDepth(unit_index)*(MUX_SIZE/2)+:(MUX_SIZE/2)] == input_index )begin
-                            r_mux_structure[f_GetUnitOutputAddress(unit_index)*WIDTH+:WIDTH] <= w_input_chain[f_GetInputAddress(unit_index, input_index)*WIDTH+:WIDTH];
-                        end
+    localparam STRUCTURE_DEPTH = f_GetStructureDepth(0);
+    localparam SEL_WIDTH = (MUX_SIZE / STRUCTURE_DEPTH * STRUCTURE_DEPTH == MUX_SIZE) ? (MUX_SIZE / STRUCTURE_DEPTH) : (MUX_SIZE / STRUCTURE_DEPTH + 1);
+    input   wire    [(STRUCTURE_SIZE*WIDTH)-1:0]        in_pipeline;
+    output  wire    [(STRUCTURE_SIZE*WIDTH)-1:0]        out_pipeline;
+    wire    [((INPUT_COUNT+STRUCTURE_SIZE-1)*WIDTH)-1:0]  w_input_chain;
+    assign w_input_chain = {in_pipeline,in};
+    generate
+        genvar unit_index, input_index;
+        for( unit_index = 0; unit_index < STRUCTURE_SIZE; unit_index = unit_index + 1) begin : mux_unit_loop
+            initial $display("unit_index: %1d output_index: %1d", unit_index, f_GetUnitOutputAddress(unit_index)!=~0?f_GetUnitOutputAddress(unit_index)+INPUT_COUNT:~0);
+            if( f_GetUnitOutputAddress(unit_index) != ~0 ) begin
+                wire [(f_GetUnitWidth(unit_index)-1)*WIDTH:0] unit_inputs;
+                for( input_index = 0; input_index != f_GetUnitWidth(unit_index); input_index = input_index + 1 ) begin : mux_input_loop
+                    initial $display("UI:%0d II:%0d A:%0d", unit_index, input_index, f_GetInputAddress(unit_index, input_index) );
+                    assign unit_inputs[WIDTH*input_index+:WIDTH] = w_input_chain[f_GetInputAddress(unit_index, input_index)*WIDTH+:WIDTH];
+                end
+                if( unit_index != STRUCTURE_SIZE-1 ) begin
+                    if( f_GetUnitWidth(unit_index) != 1 ) begin
+                        initial $display("sel   UI:%0d II: %0d SEL[%0d+:%0d]", unit_index, input_index, f_GetUnitDepth(unit_index)*SEL_WIDTH, SEL_WIDTH);
+                        assign out_pipeline[(f_GetUnitOutputAddress(unit_index)-INPUT_COUNT)*WIDTH+:WIDTH] = unit_inputs[sel[f_GetUnitDepth(unit_index)*SEL_WIDTH+:SEL_WIDTH]];
+                    end else begin
+                        initial $display("fixed UI:%0d II: %0d SEL[%0d+:%0d]", unit_index, input_index, (f_GetUnitOutputAddress(unit_index)-INPUT_COUNT)*WIDTH, SEL_WIDTH);
+                        assign out_pipeline[(f_GetUnitOutputAddress(unit_index)-INPUT_COUNT)*WIDTH+:WIDTH] = unit_inputs[sel[0+:SEL_WIDTH]];
                     end
                 end else begin
-                    always @(posedge clk) r_mux_structure[f_GetUnitOutputAddress(unit_index)*WIDTH+:WIDTH] <= w_input_chain[f_GetInputAddress(unit_index, input_index)*WIDTH+:WIDTH];
+                    initial $display("OUT = UI:%0d SEL[%0d+:%0d]", unit_index, f_GetUnitDepth(unit_index)*SEL_WIDTH, SEL_WIDTH);
+                    assign out = unit_inputs[ sel[f_GetUnitDepth(unit_index)*SEL_WIDTH+:SEL_WIDTH]*WIDTH +:WIDTH ];
                 end
             end
         end
-    end
+    endgenerate
 endmodule
 
 
@@ -165,7 +225,7 @@ module mux_tb;
     wire    [3:0]   out;
     reg     [7:0]   sel = 0;
 
-    mux_pipeline#(.WIDTH(4), .INPUT_COUNT(10), .TYPE(1) )
+    mux_pipeline#(.WIDTH(4), .INPUT_COUNT(10), .LATENCY(0), .TYPE(1) )
         UUT( .clk(clk), .sel(sel[7:4]), .in(in), .out(out) );
     
     always #1 clk <= ~clk;
@@ -188,7 +248,7 @@ module mux_tb;
         $dumpfile("UUT.vcd");
         $dumpvars(0, mux_tb);
         $display("starting mux_tb.v");
-        #320 $display( "***WARNING*** Forcing simulation to end");
+        #50 $display( "***WARNING*** Forcing simulation to end");
         $finish;
     end
 endmodule
