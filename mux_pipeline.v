@@ -70,7 +70,7 @@ module mux_pipeline #(
     endfunction
 
     localparam STRUCTURE_SIZE = f_GetVectorSize(0);
-    reg     [(STRUCTURE_SIZE*WIDTH)-1:0]    r_in_pipeline = 0;
+    reg     [(STRUCTURE_SIZE*WIDTH)-1:0]    r_in_pipeline;
     wire    [(STRUCTURE_SIZE*WIDTH)-1:0]    w_out_pipeline;
 
     mux_combinational #(.WIDTH(WIDTH), .INPUT_COUNT(INPUT_COUNT), .LATENCY(LATENCY), .TYPE(TYPE) )
@@ -180,7 +180,9 @@ module mux_combinational #(
     // find the size of the vector needed
     localparam STRUCTURE_SIZE = f_GetVectorSize(0);
     localparam STRUCTURE_DEPTH = f_GetStructureDepth(0);
-    localparam SEL_WIDTH = (MUX_SIZE / STRUCTURE_DEPTH * STRUCTURE_DEPTH == MUX_SIZE) ? (MUX_SIZE / STRUCTURE_DEPTH) : (MUX_SIZE / STRUCTURE_DEPTH + 1);
+    localparam SEL_WIDTH = $clog2(MUX_SIZE);
+    initial $display("INPUT_COUNT:%0d MUX_SIZE:%0d STRUCTURE_SIZE:%0d STRUCTURE_DEPTH:%0d SEL_WIDTH:%0d", INPUT_COUNT, MUX_SIZE, STRUCTURE_SIZE, STRUCTURE_DEPTH, SEL_WIDTH);
+    
     input   wire    [(STRUCTURE_SIZE*WIDTH)-1:0]        in_pipeline;
     output  wire    [(STRUCTURE_SIZE*WIDTH)-1:0]        out_pipeline;
     wire    [((INPUT_COUNT+STRUCTURE_SIZE-1)*WIDTH)-1:0]  w_input_chain;
@@ -188,23 +190,29 @@ module mux_combinational #(
     generate
         genvar unit_index, input_index;
         for( unit_index = 0; unit_index < STRUCTURE_SIZE; unit_index = unit_index + 1) begin : mux_unit_loop
-            initial $display("unit_index: %1d output_index: %1d", unit_index, f_GetUnitOutputAddress(unit_index)!=~0?f_GetUnitOutputAddress(unit_index)+INPUT_COUNT:~0);
+        // for( unit_index = 0; unit_index < 1; unit_index = unit_index + 1) begin : mux_unit_loop
+            initial $write(" unit_index:%2d output_index:%2d unit_width:%2d unit_depth:%2d", unit_index, f_GetUnitOutputAddress(unit_index)!=~0?f_GetUnitOutputAddress(unit_index):~0, f_GetUnitWidth(unit_index), f_GetUnitDepth(unit_index));
             if( f_GetUnitOutputAddress(unit_index) != ~0 ) begin
-                wire [(f_GetUnitWidth(unit_index)-1)*WIDTH:0] unit_inputs;
-                for( input_index = 0; input_index != f_GetUnitWidth(unit_index); input_index = input_index + 1 ) begin : mux_input_loop
-                    initial $display("UI:%0d II:%0d A:%0d", unit_index, input_index, f_GetInputAddress(unit_index, input_index) );
-                    assign unit_inputs[WIDTH*input_index+:WIDTH] = w_input_chain[f_GetInputAddress(unit_index, input_index)*WIDTH+:WIDTH];
+                // build the unit's inputs.
+                wire [STRUCTURE_SIZE*WIDTH-1:0] unit_inputs;
+                for( input_index = 0; input_index < STRUCTURE_SIZE; input_index = input_index + 1 ) begin : mux_input_loop
+                    if( input_index < f_GetUnitWidth(unit_index) ) begin
+                        initial $write(" (II:%2d A:%2d)", input_index, f_GetInputAddress(unit_index, input_index) );
+                        assign unit_inputs[WIDTH*input_index+:WIDTH] = w_input_chain[f_GetInputAddress(unit_index, input_index)*WIDTH+:WIDTH];
+                    end else 
+                        assign unit_inputs[WIDTH*input_index+:WIDTH] = {WIDTH{1'bz}};
                 end
-                if( unit_index != STRUCTURE_SIZE-1 ) begin
-                    if( f_GetUnitWidth(unit_index) != 1 ) begin
-                        initial $display("sel   UI:%0d II: %0d SEL[%0d+:%0d]", unit_index, input_index, f_GetUnitDepth(unit_index)*SEL_WIDTH, SEL_WIDTH);
-                        assign out_pipeline[(f_GetUnitOutputAddress(unit_index)-INPUT_COUNT)*WIDTH+:WIDTH] = unit_inputs[sel[f_GetUnitDepth(unit_index)*SEL_WIDTH+:SEL_WIDTH]];
-                    end else begin
-                        initial $display("fixed UI:%0d II: %0d SEL[%0d+:%0d]", unit_index, input_index, (f_GetUnitOutputAddress(unit_index)-INPUT_COUNT)*WIDTH, SEL_WIDTH);
-                        assign out_pipeline[(f_GetUnitOutputAddress(unit_index)-INPUT_COUNT)*WIDTH+:WIDTH] = unit_inputs[sel[0+:SEL_WIDTH]];
-                    end
+                // select the units output.
+                if( f_GetUnitWidth(unit_index) != 1 ) begin
+                    initial $display(" sel - SEL[%0d+:%0d]", f_GetUnitDepth(unit_index)*SEL_WIDTH, SEL_WIDTH );
+                    assign out_pipeline[(f_GetUnitOutputAddress(unit_index))*WIDTH+:WIDTH] = unit_inputs[sel[f_GetUnitDepth(unit_index)*SEL_WIDTH+:SEL_WIDTH]*WIDTH+:WIDTH];
                 end else begin
-                    initial $display("OUT = UI:%0d SEL[%0d+:%0d]", unit_index, f_GetUnitDepth(unit_index)*SEL_WIDTH, SEL_WIDTH);
+                    initial $display(" set");
+                    assign out_pipeline[(f_GetUnitOutputAddress(unit_index))*WIDTH+:WIDTH] = unit_inputs[sel[0+:SEL_WIDTH]*WIDTH+:WIDTH];
+                end
+                if( unit_index == STRUCTURE_SIZE-1 ) begin
+                    initial $display("OUT = UI:%0d", unit_index);
+                    // always @(posedge clk) $display("OUT:%0d UI:%0d SEL:%0d", out, unit_index, sel);
                     assign out = unit_inputs[ sel[f_GetUnitDepth(unit_index)*SEL_WIDTH+:SEL_WIDTH]*WIDTH +:WIDTH ];
                 end
             end
@@ -225,7 +233,7 @@ module mux_tb;
     wire    [3:0]   out;
     reg     [7:0]   sel = 0;
 
-    mux_pipeline#(.WIDTH(4), .INPUT_COUNT(10), .LATENCY(0), .TYPE(1) )
+    mux_pipeline#(.WIDTH(4), .INPUT_COUNT(10), .LATENCY(2), .TYPE(1) )
         UUT( .clk(clk), .sel(sel[7:4]), .in(in), .out(out) );
     
     always #1 clk <= ~clk;
@@ -241,14 +249,14 @@ module mux_tb;
         else
             correct <= 0;
         if( correct == {1'b0, 1'b1} )
-            $display( "%1d %1d", $time, out );
+            $display( "time:%0d sel:%0d out:%0d", $time, sel[7:4], out );
     end
 
     initial begin
         $dumpfile("UUT.vcd");
         $dumpvars(0, mux_tb);
         $display("starting mux_tb.v");
-        #50 $display( "***WARNING*** Forcing simulation to end");
+        #600 $display( "***WARNING*** Forcing simulation to end");
         $finish;
     end
 endmodule
