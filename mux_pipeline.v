@@ -3,8 +3,6 @@
 // Filename:	mux_pipeline.v
 //
 // Project:	mux_pipeline
-// Status: Beta,
-// Notes: register optimization is not fully implemented. #91-96 does not properly handle the new optimizations
 // Purpose:	A variable width multiplexer for high speed designs.
 //
 // Creator:	Ronald Rainwater
@@ -100,28 +98,6 @@ module mux_combinational #(
     `else
         `include "recursion_iterators.h"
     `endif
-    //  LUT width 2     TYPE(0)-FIXED                   LUT width 4       TYPE(1)-Fixed
-    //  base #  0___1   2___3   4___5   6___7   8___9   0___1___2___3   4___5___6___7   8___9
-    //          U-0 |   U-1 |   U-2 |   U-3 |   U-4 |   U-0         |   U-1         |   U-2 |
-    //             10______11      12______13      14              10______________11______12
-    //              U-5     |       U-6     |   U-7 |               U-3                     |
-    //                     15______________16      17                                    trigger
-    //                      U-8             |   U-9 |
-    //                                     18______19
-    //                                      U-10    |
-    //                                            trigger
-
-    //  LUT width 2     TYPE(0)-OPTIMIZED               LUT width 4       TYPE(1)-OPTIMIZED
-    //  base #  0___1   2___3   4___5   6___7   8___9   0___1___2___3   4___5___6___7   8___9
-    //          U-0 |   U-1 |   U-2 |   U-3 |   U-4 |   U-0         |   U-1         |   U-2 |
-    //             10______11      12______13      14              10______________11______12
-    //              U-5     |       U-6     |   U-7 |               U-3                     |
-    //                     15______________16       |                                    trigger
-    //                      U-8             |   U-9 |
-    //                                     17_______|
-    //                                      U-10    |
-    //                                            trigger
-
     function automatic integer f_GetMuxSize;
         input unused;
         begin
