@@ -40,11 +40,7 @@ module mux_pipeline #(
     input   wire    [$clog2(INPUT_COUNT)-1:0]   sel;
     input   wire    [(WIDTH*INPUT_COUNT)-1:0]   in;
     output  wire    [WIDTH-1:0]                 out;
-    `ifndef FORMAL
-        `include "./toolbox/recursion_iterators.h"
-    `else
-        `include "recursion_iterators.h"
-    `endif
+    `include "recursion_iterators.h"
 
     function automatic integer f_GetMuxSize;
         input unused;
@@ -93,11 +89,7 @@ module mux_combinational #(
     input   wire    [(WIDTH*INPUT_COUNT)-1:0]   in;
     output  wire    [WIDTH-1:0]                 out;
 
-    `ifndef FORMAL
-        `include "./toolbox/recursion_iterators.h"
-    `else
-        `include "recursion_iterators.h"
-    `endif
+    `include "recursion_iterators.h"
     function automatic integer f_GetMuxSize;
         input unused;
         begin
