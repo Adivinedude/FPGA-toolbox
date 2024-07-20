@@ -39,7 +39,7 @@ module mux_lfmr #(
     input   wire    [$clog2(INPUT_COUNT)-1:0]   sel;
     input   wire    [(WIDTH*INPUT_COUNT)-1:0]   in;
     output  wire    [WIDTH-1:0]                 out;
-    `include "recursion_iterators.h"
+    `include "recursion_iterators.vh"
 
     function automatic integer f_GetMuxSize;
         input unused;
@@ -88,7 +88,7 @@ module mux_combinational #(
     input   wire    [(WIDTH*INPUT_COUNT)-1:0]   in;
     output  wire    [WIDTH-1:0]                 out;
 
-    `include "recursion_iterators.h"
+    `include "recursion_iterators.vh"
     function automatic integer f_GetMuxSize;
         input unused;
         begin

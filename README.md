@@ -15,7 +15,7 @@ High speed multiplexer with variable width. Operating modes include 'Fixed laten
 ## [dmux_pipeline.v](dmux_pipeline.v)
 High speed demultiplexer with variable width. Operating modes include 'Fixed latency' and 'Optimize for size'
 
-## [recursion_iterators.h](recursion_iterators.h)
+## [recursion_iterators.vh](recursion_iterators.vh)
 Functions used for building pipeline data structures. Structure diagrams included.
 * Tail Recursion - useful for running a magnitude comparison while data is in the pipeline.
 * Nary Recursion - useful for large reduction operations with fixed latency

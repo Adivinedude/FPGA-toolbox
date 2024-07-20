@@ -40,7 +40,7 @@ module dmux_lfmr #(
     input   wire    [$clog2(OUTPUT_COUNT)-1:0]  sel;
     input   wire    [WIDTH-1:0]                 in;
     output  wire    [(WIDTH*OUTPUT_COUNT)-1:0]  out;
-    `include "recursion_iterators.h"
+    `include "recursion_iterators.vh"
 
     function automatic integer f_GetMuxSize;
         input unused;
@@ -89,7 +89,7 @@ module dmux_combinational #(
     input   wire    [WIDTH-1:0]                 in;
     output  wire    [(WIDTH*OUTPUT_COUNT)-1:0]  out;
 
-    `include "recursion_iterators.h"
+    `include "recursion_iterators.vh"
     function automatic integer f_GetMuxSize;
         input unused;
         begin
