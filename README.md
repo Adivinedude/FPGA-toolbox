@@ -12,6 +12,9 @@ Building blocks for a fast pipelined ripple carry ALU with configurable width an
 ## [mux_pipeline.v](mux_pipeline.v)
 High speed multiplexer with variable width. Operating modes include 'Fixed latency' and 'Optimize for size'
 
+## [dmux_pipeline.v](dmux_pipeline.v)
+High speed demultiplexer with variable width. Operating modes include 'Fixed latency' and 'Optimize for size'
+
 ## [recursion_iterators.h](recursion_iterators.h)
 Functions used for building pipeline data structures. Structure diagrams included.
 * Tail Recursion - useful for running a magnitude comparison while data is in the pipeline.
