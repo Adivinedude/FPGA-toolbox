@@ -27,9 +27,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 `default_nettype none
-// Multiplexer with a fixed output latency.
 
-module mux_pipeline #(
+module mux_lfmr #(
     parameter WIDTH = 1,
     parameter INPUT_COUNT = 2,
     parameter LATENCY = 0,
