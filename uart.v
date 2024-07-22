@@ -1,4 +1,33 @@
-/*
+////////////////////////////////////////////////////////////////////////////////
+//
+// Filename: uart.v
+//
+// Project:	Universal Asynchronous Receiver Transmitter
+//
+// Purpose:	a fast, configurable, over engineered uart controller. 
+// (+210MHz Fmax on the tang nano 9k)
+//
+// Creator:	Ronald Rainwater
+// Data: 2024-6-21
+////////////////////////////////////////////////////////////////////////////////
+// Copyright (C) 2024, Ronald Rainwater
+//
+// This program is free software (firmware): you can redistribute it and/or
+// modify it under the terms of the GNU General Public License as published
+// by the Free Software Foundation, either version 3 of the License, or (at
+// your option) any later version.
+//
+// This program is distributed in the hope that it will be useful, but WITHOUT
+// ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
+// FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License
+// for more details.
+//
+// You should have received a copy of the GNU General Public License along
+// with this program. If not, see <http://www.gnu.org/licenses/> for a copy.
+// License:	GPL, v3, as defined and found on www.gnu.org,
+//		http://www.gnu.org/licenses/gpl.html
+////////////////////////////////////////////////////////////////////////////////
+
 // Top Down View
 //     uart \
 //         - uart_config
@@ -11,7 +40,7 @@
 // ToDo: 
 //  1) implement flow control
 //  2) implement half duplex mode
-*/
+
 
 `default_nettype none
 `include "uart/uart_include.v"
