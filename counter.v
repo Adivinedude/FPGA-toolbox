@@ -53,7 +53,8 @@ module counter_with_strobe
         .I2(    { {WIDTH-1{1'b0}}, enable } ),
         .I3(    reset_value ),
         .sum(   w_counter_ff ),
-        .cmp_eq( trigger )
+        .sub(), .gate_and(), .gate_or(), .gate_xor(),
+        .cmp_eq( trigger ), .cmp_neq()
     );   
     always @( posedge clk ) begin
         if( rst )

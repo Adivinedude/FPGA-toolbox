@@ -381,11 +381,11 @@ module math_combinational
         end
     endfunction
     // loop through each unit and assign the in and outs
-    for( unit_index = 0; unit_index < CMP_CARRYCHAIN_WIDTH; unit_index = unit_index + 1) begin
+    for( unit_index = 0; unit_index < CMP_CARRYCHAIN_WIDTH; unit_index = unit_index + 1) begin : CMP_EQ_unit_loop
             // make the input wires for this unit   
             wire [f_input_size(unit_index):0] unit_inputs;
             // assign the inputs to their proper place
-            for( input_index = f_input_size(unit_index); input_index != ~0; input_index = input_index-1 ) begin
+            for( input_index = f_input_size(unit_index); input_index != ~0; input_index = input_index-1 ) begin : CMP_EQ_input_loop
                 // initial $display("unit_index: %d input_index:%d func:%d", unit_index, input_index, f_TailRecursionGetUnitInputAddress(CHUNK_COUNT, CMP_LUT_WIDTH, unit_index, input_index));
                 assign unit_inputs[input_index] = 
                     cmp_eq_carry_in[f_TailRecursionGetUnitInputAddress(CHUNK_COUNT, CMP_LUT_WIDTH, unit_index, input_index)];

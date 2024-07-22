@@ -80,7 +80,7 @@ module uart_rx
     reg     [COUNTER_WIDTH - $clog2(SAMPLE_COUNT) - 1:0]    r_sample_clk_rst_value  = ~0; // sample clock reset value
     reg     [SAMPLE_WIDTH-1:0]                              r_sample_buffer         = SAMPLE_COUNT;
     reg     [`UART_CONFIG_WIDTH-1:0]                        r_current_settings      = 0; // config settings - see 'uart_include.v' for details
-    reg     [DATA_WIDTH:0]                                  r_data_frame            = 0; // over sampled result
+    reg     [DATA_WIDTH-1:0]                                r_data_frame            = 0; // over sampled result
     reg     [$clog2(DATA_WIDTH):0]                          r_rx_bit_number         = 0;
     reg                                                     r_rx_parity             = 0;
     reg     [`UART_CONFIG_WIDTH_DATABITS-1:0]               r_rx_bit_number_I2      = 0;
@@ -116,8 +116,9 @@ module uart_rx
     synchronizer #(.DEPTH_INPUT(0), .DEPTH_OUTPUT(2), .INIT(1'b1) ) 
         rx_pin_synchronizer( .clk_in(clk), .in(uart_rxpin), .clk_out(clk), .out(w_rx_pin_syn) );
     
+    // Demultiplexer to store the incoming data
     dmux_lfmr #(.WIDTH(1), .OUTPUT_COUNT(DATA_WIDTH))
-        dmux_next_data_bit(.clk(clk), .sel(r_rx_bit_number), .in(w_rx_pin_syn), .out(w_data_frame) );
+        dmux_next_data_bit(.clk(clk), .sel(r_rx_bit_number), .in(w_sample_value), .out(w_data_frame) );
     
     // Brad rate timer
     counter_with_strobe #( .WIDTH( COUNTER_WIDTH ), .LATENCY(COUNTER_LATENCY) ) 
@@ -157,26 +158,42 @@ module uart_rx
 
     // r_current_settings
     always @( posedge clk ) begin
-        if( r_rx_state == RX_STATE_IDLE )
+        if( r_rx_state == RX_STATE_IDLE ) begin
             r_current_settings <= settings;
+        end else begin
+            if( r_rx_state_changed ) begin
+                if(r_rx_state == RX_STATE_PARITY) begin
+                    r_current_settings[`UART_CONFIG_BITS_DATABITS] <= 
+                        {{`UART_CONFIG_WIDTH_DATABITS-`UART_CONFIG_WIDTH_PARITY{1'b0}}, UART_CONFIG_PARITY == `UART_PARITY_NONE ? 1'b0 : 1'b1 };
+                end
+                if(r_rx_state == RX_STATE_STOP) begin
+                    r_current_settings[`UART_CONFIG_BITS_DATABITS] <= 
+                    {{`UART_CONFIG_WIDTH_DATABITS-2{1'b0}}, UART_CONFIG_STOPBITS == `UART_STOPBITS_1 ? 2'd1 : 2'd2 };
+                end
+            end
+        end
     end
 
 // r_rx_state
     assign w_goto_next_state =  {   &{r_rx_state == RX_STATE_IDLE,      ce,         !w_rx_pin_syn},                 // enter start state
                                     &{r_rx_state == RX_STATE_START,     w_bit_ce,   !w_sample_value},               // enter read state
-                                    &{r_rx_state == RX_STATE_READ,      w_bit_ce,   w_rx_bit_number_eq_DATABITS},   // enter parity state
+                                    &{r_rx_state == RX_STATE_READ,      w_rx_bit_number_eq_DATABITS},               // enter parity state
                                     &{r_rx_state == RX_STATE_PARITY,    w_bit_ce || UART_CONFIG_PARITY == `UART_PARITY_NONE} };//enter stop state
+    
     assign w_goto_idle_state =  {   &{r_rx_state == RX_STATE_START,     w_bit_ce,   w_sample_value},                // exit false start
                                     r_rx_state == RX_STATE_STOP,                                                    // exit when finished
                                     r_rx_state >= RX_NUMBER_OF_STATES,                                              // exit on invalid state
                                     rst };
 
     always @( posedge clk ) begin
+        r_rx_state_changed <= 1'b0;
         if( |w_goto_idle_state ) begin
             r_rx_state <= RX_STATE_IDLE;
+            r_rx_state_changed <= 1'b1;
         end else begin 
             if( |w_goto_next_state ) begin
                 r_rx_state <= r_rx_state + 1'b1;
+                r_rx_state_changed <= 1'b1;
             end
         end
     end
@@ -197,27 +214,12 @@ module uart_rx
         r_rx_bit_number <= w_rx_bit_number_SUM;
         r_rx_bit_number_I2 <= 0;
         if( w_bit_ce ) begin
-            if( r_rx_state == RX_STATE_START ) begin
-                if( !w_sample_value ) begin    // if the start bit was successfully sampled. enter read mode
-                    if( UART_CONFIG_PARITY == 0 )
-                        r_rx_bit_number_I2 <= 1'b1;
-                    r_rx_bit_number <= 0;
-                end
-            end 
-            if( r_rx_state == RX_STATE_READ ) begin
-                r_rx_bit_number_I2 <= 1'b1;
-                if( w_rx_bit_number_eq_DATABITS ) begin
-                    r_rx_bit_number <= DATA_WIDTH + (UART_CONFIG_PARITY == `UART_PARITY_NONE) - UART_CONFIG_DATABITS;
-                end
-            end
+            r_rx_bit_number_I2 <= 1'b1;
         end
-        if( ce ) begin
-            if( r_rx_state == RX_STATE_STOP ) begin
-                if( w_rx_bit_number_neq_DATABITS ) begin
-                    r_rx_bit_number_I2 <= 1'b1;
-                end
-            end
+        if( r_rx_state_changed ) begin
+            r_rx_bit_number <= 0;
         end
+
     end // always
     /////////
     // r_rx_parity

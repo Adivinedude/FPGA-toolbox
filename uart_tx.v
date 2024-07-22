@@ -34,8 +34,7 @@
 // 2) 'r_tx_data' feeds a multiplexer, providing the 'w_next_tx_data' based on the current 'r_tx_bit_number'
 // 3) Another multiplexer fed with 'stop', 'r_parity', 'w_next_tx_data', and 'idle' bits feeds into 'r_tx_pin' based on 'r_tx_state' 
 // 4) 'r_tx_data' parity is calculated at every bit interval and stored in 'r_parity'
-// 5) During the last stop bit, the value of 'UART_CONFIG_DELAY_FRAMES' is reduced to provide a means to fully utilize bandwidth 
-// 6) GoTo step #1.
+// 5) GoTo step #1.
 
                                                   
 `default_nettype none
@@ -80,8 +79,6 @@ module uart_tx
     reg [$clog2(DATA_WIDTH):0]                  r_tx_bit_number     = 0;
     reg [$clog2(DATA_WIDTH):0]                  r_tx_bit_number_I2  = 0;
     reg [$clog2(DATA_WIDTH):0]                  r_tx_bit_number_I3  = 0;
-    // reg [`UART_CONFIG_WIDTH_DELAYFRAMES-1:0]    r_current_settings_DELAY_FRAMES = 0;
-    reg [`UART_CONFIG_WIDTH_DELAYFRAMES-1:0]    r_current_settings_I2 = 0;
     reg                                         r_parity            = 0;
 
     // config settings - see 'uart_include.v' for details.
@@ -97,9 +94,9 @@ module uart_tx
     wire                                        w_tx_bit_number_eq_DATABITS;  
     wire                                        w_next_tx_data;
     wire                                        w_next_tx_pin;
-    wire [`UART_CONFIG_WIDTH_DELAYFRAMES-1:0]   w_current_settings_SUB;
     wire [3:0]                                  w_mux_next_tx_pin_in;
     wire [2:0]                                  w_goto_next_state;
+    wire [1:0]                                  w_goto_idle_state;
 
     // assignments
     assign w_start_tx_procedure = r_tx_state == TX_STATE_IDLE && send_tx;
@@ -119,11 +116,6 @@ module uart_tx
     mux_lfmr #(.WIDTH(1), .INPUT_COUNT(TX_NUMBER_OF_STATES)) 
         mux_next_tx_pin(.clk(clk), .sel(r_tx_state), .in({1'b1, r_parity, w_next_tx_data, 1'b1}), .out(w_next_tx_pin) );
 
-    // High speed subtraction to END_EARLY
-    math_lfmr #( .WIDTH(COUNTER_WIDTH), .LATENCY(LATENCY) )
-        math_current_settings_INIT( .clk(clk), .rst(1'b0), .I1(UART_CONFIG_DELAY_FRAMES), .I2(r_current_settings_I2),
-            .sub(w_current_settings_SUB) );
-
     // High speed adder to increment tx_bit_number
     math_lfmr #( .WIDTH($clog2(DATA_WIDTH)+1), .LATENCY(LATENCY) )
         math_tx_bit_number( .clk(clk), .rst(1'b0), .I1(r_tx_bit_number), .I2(r_tx_bit_number_I2), .I3(r_tx_bit_number_I3),
@@ -136,20 +128,19 @@ module uart_tx
     // r_tx_state
     assign w_goto_next_state    = { w_start_tx_procedure,
                                     w_bit_ce && w_tx_bit_number_eq_DATABITS,
-                                    w_bit_ce && r_tx_state == TX_STATE_PARITY };
+                                    (r_tx_state == TX_STATE_PARITY && UART_CONFIG_PARITY == `UART_PARITY_NONE) ? 1'b1 : 1'b0 };
+
+    assign w_goto_idle_state    = { rst,
+                                    r_tx_state >= TX_NUMBER_OF_STATES };
+
     always @( posedge clk ) begin
         r_tx_state_changed <= 0;
-        if( rst ) begin
-            r_tx_state <= 0;
-        end else begin
-            if( |w_goto_next_state ) begin
-                if( r_tx_state == TX_NUMBER_OF_STATES-1 ) begin
-                    r_tx_state <= TX_STATE_IDLE;
-                end else begin
-                    r_tx_state <= r_tx_state + 1'b1;
-                    r_tx_state_changed <= 1'b1;
-                end
-            end
+        if( |w_goto_next_state ) begin
+            r_tx_state <= r_tx_state + 1'b1;
+            r_tx_state_changed <= 1'b1;
+        end
+        if( |w_goto_idle_state ) begin
+            r_tx_state <= TX_STATE_IDLE;
         end
     end    
 
@@ -193,14 +184,17 @@ module uart_tx
         end
     end
 
-    // r_current_settings   item 5:
+    // r_current_settings
     always @( posedge clk ) begin
-        r_current_settings_I2 <= 0;
-        r_current_settings[`UART_CONFIG_BITS_DELAYFRAMES] <= w_current_settings_SUB;
         if( r_tx_state == TX_STATE_IDLE ) begin
             r_current_settings <= settings;
         end
-        if( r_tx_state == TX_STATE_STOP && r_tx_bit_number == 0 && r_tx_state_changed)
-            r_current_settings_I2 <= END_EARLY;
+        case( r_tx_state )
+            TX_STATE_PARITY:
+                r_current_settings[`UART_CONFIG_BITS_DATABITS] <= `UART_CONFIG_WIDTH_DATABITS'd1;
+            TX_STATE_STOP:
+                r_current_settings[`UART_CONFIG_BITS_DATABITS] 
+                    <= { {`UART_CONFIG_WIDTH_DATABITS - `UART_CONFIG_WIDTH_STOPBITS{1'b0}}, UART_CONFIG_STOPBITS};
+        endcase
     end    
 endmodule
