@@ -78,7 +78,6 @@ module uart_tx
     reg [`UART_CONFIG_WIDTH-1:0]                r_current_settings  = 0;
     reg [$clog2(DATA_WIDTH):0]                  r_tx_bit_number     = 0;
     reg [$clog2(DATA_WIDTH):0]                  r_tx_bit_number_I2  = 0;
-    reg [$clog2(DATA_WIDTH):0]                  r_tx_bit_number_I3  = 0;
     reg                                         r_parity            = 0;
 
     // config settings - see 'uart_include.v' for details.
@@ -118,7 +117,7 @@ module uart_tx
 
     // High speed adder to increment tx_bit_number
     math_lfmr #( .WIDTH($clog2(DATA_WIDTH)+1), .LATENCY(LATENCY) )
-        math_tx_bit_number( .clk(clk), .rst(1'b0), .I1(r_tx_bit_number), .I2(r_tx_bit_number_I2), .I3(r_tx_bit_number_I3),
+        math_tx_bit_number( .clk(clk), .rst(1'b0), .I1(r_tx_bit_number), .I2(r_tx_bit_number_I2), .I3(UART_CONFIG_DATABITS),
             .sum(w_tx_bit_number_SUM), .cmp_eq(w_tx_bit_number_eq_DATABITS) );
             
     // Brad rate timer
@@ -150,12 +149,6 @@ module uart_tx
         r_tx_bit_number     <= w_tx_bit_number_SUM;
         if( r_tx_state == TX_STATE_IDLE || r_tx_state_changed ) begin
             r_tx_bit_number <= 0;
-        end
-
-        if( w_start_tx_procedure ) begin
-            r_tx_bit_number_I3 <= UART_CONFIG_DATABITS;
-        end else if( r_tx_state == TX_STATE_STOP ) begin
-            r_tx_bit_number_I3 <= UART_CONFIG_STOPBITS;
         end
     end
 
