@@ -138,12 +138,6 @@ module uart
     wire                        uart_tx_txReady;
     reg                         send_tx = 0;
     wire    [DATA_WIDTH-1:0]    w_uart_tx_dataIn;
-    reg     [DATA_WIDTH-1:0]    r_uart_tx_dataIn;
-    reg                         r_uart_tx_dataIn_valid = 0;
-    always @( posedge clk ) begin
-        r_uart_tx_dataIn <= w_uart_tx_dataIn;
-        r_uart_tx_dataIn_valid <= send_tx;
-    end
 // Tx Module
     uart_tx #(  
         .COUNTER_WIDTH( COUNTER_WIDTH ),
@@ -154,8 +148,8 @@ module uart
         .ce(                        ce ),
         .uart_txpin(                tx_pin ),
         .uart_tx_busy(),
-        .datain(                    r_uart_tx_dataIn ),
-        .send_tx(                   r_uart_tx_dataIn_valid ),
+        .datain(                    w_uart_tx_dataIn ),
+        .send_tx(                   send_tx ),
         .uart_tx_ready(             uart_tx_txReady ),
         .rst(                       rst ),
         .settings(                  tx_config )
@@ -177,13 +171,14 @@ module uart
         .empty_flag(    tx_empty ),
         .almost_empty(  tx_almost_empty )
     );
+
     // Send data stored in tx buffer when its available and tx is ready
     reg r_tx_empty = 0;
     always @( posedge clk ) begin
         r_tx_empty <= tx_empty;
         if( send_tx ) begin
             send_tx  <= 0;
-        end else if( uart_tx_txReady && ~r_tx_empty ) begin
+        end else if( uart_tx_txReady && !r_tx_empty && ce ) begin
             send_tx <= 1;
         end
     end
