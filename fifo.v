@@ -35,17 +35,29 @@ module fifo #(
 
     wire    buffer_we;
     assign  buffer_we = we;// && !full_flag;
-    ssram16dp_array #( .width( WIDTH ), .depth( DEPTH ) ) 
-        buffer( .clk(       clk ), 
-                .we(        buffer_we ),
-                .raddress(  front[aw-1:0]),
-                .waddress(  back [aw-1:0]),
-                .dataIn(    dataIn),
-                .dataOut(   dataOut)
-                );
+    // ssram16dp_array #( .width( WIDTH ), .depth( DEPTH ) ) 
+    //     buffer( .clk(       clk ), 
+    //             .we(        buffer_we ),
+    //             .raddress(  front[aw-1:0]),
+    //             .waddress(  back [aw-1:0]),
+    //             .dataIn(    dataIn),
+    //             .dataOut(   dataOut)
+    //             );
+    reg [WIDTH-1:0] buffer [DEPTH-1:0];
+    always @( posedge clk ) begin
+        if( buffer_we )
+            buffer[back[aw-1:0]] <= dataIn;
+    end
+    assign dataOut = front[aw-1:0]/* synthesis syn_ramstyle = "distributed_ram" */;
 
     `ifdef TEST_BENCH_RUNNING
         reg [WIDTH-1:0] last_data_written;
+        always @( posedge clk ) begin
+            if( !rst ) begin
+                if( buffer_we )
+                    last_data_written <= dataIn;
+            end
+        end
     `endif
 
     always @( posedge clk ) begin
@@ -55,9 +67,6 @@ module fifo #(
         end else begin
             if( buffer_we ) begin
                 back <= back + 1'b1;
-            `ifdef TEST_BENCH_RUNNING
-                last_data_written <= dataIn;
-            `endif 
             end
             if( re ) begin // && !empty_flag) begin
                 front <= front + 1'b1;
