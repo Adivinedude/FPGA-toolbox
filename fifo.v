@@ -43,13 +43,13 @@ module fifo #(
     //             .dataIn(    dataIn),
     //             .dataOut(   dataOut)
     //             );
-    reg [WIDTH-1:0] buffer [DEPTH-1:0];
+    reg [WIDTH-1:0] buffer [DEPTH-1:0]/* synthesis syn_ramstyle = "distributed_ram" */;
+    
     always @( posedge clk ) begin
         if( buffer_we )
             buffer[back[aw-1:0]] <= dataIn;
     end
-    assign dataOut = front[aw-1:0]/* synthesis syn_ramstyle = "distributed_ram" */;
-
+    assign dataOut = buffer[front[aw-1:0]];
     `ifdef TEST_BENCH_RUNNING
         reg [WIDTH-1:0] last_data_written;
         always @( posedge clk ) begin
