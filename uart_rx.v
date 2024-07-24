@@ -42,7 +42,7 @@
 //  5) 
 
 `default_nettype none
-`include "uart/uart_include.v"
+`include "toolbox/uart_include.vh"
 module uart_rx
 #(
     parameter COUNTER_WIDTH       = `UART_CONFIG_WIDTH_DELAYFRAMES,
@@ -118,7 +118,7 @@ module uart_rx
     
     // Demultiplexer to store the incoming data
     dmux_lfmr #(.WIDTH(1), .OUTPUT_COUNT(DATA_WIDTH))
-        dmux_next_data_bit(.clk(clk), .sel(r_rx_bit_number), .in(w_sample_value), .out(w_data_frame) );
+        dmux_next_data_bit(.clk(clk), .sel(r_rx_bit_number[0+:$clog2(DATA_WIDTH)]), .in(w_sample_value), .out(w_data_frame) );
     
     // Brad rate timer
     counter_with_strobe #( .WIDTH( COUNTER_WIDTH ), .LATENCY(COUNTER_LATENCY) ) 
@@ -133,7 +133,7 @@ module uart_rx
     // High speed adder to increment r_rx_bit_number
     math_lfmr #( .WIDTH($clog2(DATA_WIDTH)+1), .LATENCY(LATENCY) )
         r_rx_bit_number_math( .clk(clk), .rst(w_bit_ce), .I1(r_rx_bit_number), .I2(r_rx_bit_number_I2), .I3(UART_CONFIG_DATABITS), 
-            .sum(w_rx_bit_number_SUM), .cmp_eq(w_rx_bit_number_eq_DATABITS), .cmp_neq(w_rx_bit_number_neq_DATABITS) );
+            .sum(w_rx_bit_number_SUM), .sub(), .gate_and(), .gate_or(), .gate_xor(), .cmp_eq(w_rx_bit_number_eq_DATABITS), .cmp_neq(w_rx_bit_number_neq_DATABITS) );
 
     // r_sample_buffer
     always @( posedge clk ) begin
@@ -175,11 +175,14 @@ module uart_rx
     end
 
 // r_rx_state
+    reg [3:0] r_goto_next_state = 0;
+    always @( posedge clk ) r_goto_next_state <= w_goto_next_state;
     assign w_goto_next_state =  {   &{r_rx_state == RX_STATE_IDLE,      ce,         !w_rx_pin_syn},                 // enter start state
                                     &{r_rx_state == RX_STATE_START,     w_bit_ce,   !w_sample_value},               // enter read state
                                     &{r_rx_state == RX_STATE_READ,      w_rx_bit_number_eq_DATABITS},               // enter parity state
                                     &{r_rx_state == RX_STATE_PARITY,    w_bit_ce || UART_CONFIG_PARITY == `UART_PARITY_NONE} };//enter stop state
-    
+    reg [3:0] r_goto_idle_state = 0;
+    always @( posedge clk ) r_goto_idle_state <= w_goto_idle_state;
     assign w_goto_idle_state =  {   &{r_rx_state == RX_STATE_START,     w_bit_ce,   w_sample_value},                // exit false start
                                     r_rx_state == RX_STATE_STOP,                                                    // exit when finished
                                     r_rx_state >= RX_NUMBER_OF_STATES,                                              // exit on invalid state
@@ -187,11 +190,11 @@ module uart_rx
 
     always @( posedge clk ) begin
         r_rx_state_changed <= 1'b0;
-        if( |w_goto_idle_state ) begin
+        if( |r_goto_idle_state ) begin
             r_rx_state <= RX_STATE_IDLE;
             r_rx_state_changed <= 1'b1;
         end else begin 
-            if( |w_goto_next_state ) begin
+            if( |r_goto_next_state ) begin
                 r_rx_state <= r_rx_state + 1'b1;
                 r_rx_state_changed <= 1'b1;
             end

@@ -43,7 +43,7 @@
 
 
 `default_nettype none
-`include "uart/uart_include.v"
+`include "toolbox/uart_include.vh"
 module uart
 #(
     parameter   COUNTER_WIDTH   = `UART_CONFIG_WIDTH_DELAYFRAMES,

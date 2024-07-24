@@ -39,7 +39,7 @@
                                                   
 `default_nettype none
 `ifndef FORMAL
-    `include "uart/uart_include.v"
+    `include "toolbox/uart_include.vh"
 `else
     `define TEST_BENCH_RUNNING
     `include "uart_include.v"
@@ -118,8 +118,8 @@ module uart_tx
     // High speed adder to increment tx_bit_number
     math_lfmr #( .WIDTH($clog2(DATA_WIDTH)+1), .LATENCY(LATENCY) )
         math_tx_bit_number( .clk(clk), .rst(1'b0), .I1(r_tx_bit_number), .I2(r_tx_bit_number_I2), .I3(UART_CONFIG_DATABITS),
-            .sum(w_tx_bit_number_SUM), .cmp_eq(w_tx_bit_number_eq_DATABITS) );
-            
+            .sum(w_tx_bit_number_SUM), .sub(), .gate_and(), .gate_or(), .gate_xor(), .cmp_eq(w_tx_bit_number_eq_DATABITS), .cmp_neq() );
+
     // Brad rate timer
     counter_with_strobe #( .WIDTH( COUNTER_WIDTH ), .LATENCY( LATENCY ) ) 
         bit_counter( .clk( clk ), .rst( r_tx_state == 0 ), .enable( ce ), .reset_value( UART_CONFIG_DELAY_FRAMES ), .strobe( w_bit_ce ) );
