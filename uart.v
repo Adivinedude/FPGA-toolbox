@@ -174,11 +174,14 @@ module uart
 
     // Send data stored in tx buffer when its available and tx is ready
     reg r_tx_empty = 0;
+    reg r_tx_ready = 0;
     always @( posedge clk ) begin
         r_tx_empty <= tx_empty;
+        r_tx_ready <= uart_tx_txReady;
         if( send_tx ) begin
             send_tx  <= 0;
-        end else if( uart_tx_txReady && !r_tx_empty && ce ) begin
+            r_tx_ready <= 0;
+        end else if( r_tx_ready && !r_tx_empty && ce ) begin
             send_tx <= 1;
         end
     end

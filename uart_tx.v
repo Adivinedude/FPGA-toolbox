@@ -108,7 +108,7 @@ module uart_tx
     //              : 1'b1;              // `UART_PARITY_NONE
     // submodules
     //  select data based on tx_bit_number
-    mux_lfmr #(.WIDTH(1), .INPUT_COUNT(DATA_WIDTH+1)) 
+    mux_lfmr #(.WIDTH(1), .INPUT_COUNT(DATA_WIDTH+1), .LATENCY(LATENCY) ) 
         mux_next_data_bit( .clk(clk), .sel(r_tx_bit_number), .in({r_tx_data, 1'b0}), .out(w_next_tx_data) );
 
     //  select output based on tx_state
@@ -125,20 +125,28 @@ module uart_tx
         bit_counter( .clk( clk ), .rst( r_tx_state == 0 ), .enable( ce ), .reset_value( UART_CONFIG_DELAY_FRAMES ), .strobe( w_bit_ce ) );
     
     // r_tx_state
+    reg [2:0] r_goto_next_state = 0;
     assign w_goto_next_state    = { w_start_tx_procedure,
                                     w_bit_ce && w_tx_bit_number_eq_DATABITS,
                                     (r_tx_state == TX_STATE_PARITY && UART_CONFIG_PARITY == `UART_PARITY_NONE) ? 1'b1 : 1'b0 };
-
+    reg [1:0] r_goto_idle_state = 0;
     assign w_goto_idle_state    = { rst,
                                     r_tx_state >= TX_NUMBER_OF_STATES };
 
     always @( posedge clk ) begin
         r_tx_state_changed <= 0;
-        if( |w_goto_next_state ) begin
+        if( r_tx_state_changed ) begin
+            r_goto_next_state <= 0;
+            r_goto_idle_state <= 0;
+        end else begin
+            r_goto_next_state <= w_goto_next_state;
+            r_goto_idle_state <= w_goto_idle_state;
+        end
+        if( |r_goto_next_state ) begin
             r_tx_state <= r_tx_state + 1'b1;
             r_tx_state_changed <= 1'b1;
         end
-        if( |w_goto_idle_state ) begin
+        if( |r_goto_idle_state ) begin
             r_tx_state <= TX_STATE_IDLE;
         end
     end    

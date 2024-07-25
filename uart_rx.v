@@ -72,7 +72,6 @@ module uart_rx
 
     // shift input r_sample_buffer into the 'r_sample_buffer' register
     localparam SAMPLE_WIDTH     = $clog2(SAMPLE_COUNT)+1;
-    localparam COUNTER_LATENCY  = (LATENCY == 0) ? LATENCY : LATENCY - 1;
 
     // registers
     reg     [RX_NUMBER_OF_STATES-1:0]                       r_rx_state              = 'd1;
@@ -121,12 +120,12 @@ module uart_rx
         dmux_next_data_bit(.clk(clk), .sel(r_rx_bit_number[0+:$clog2(DATA_WIDTH)]), .in(w_sample_value), .out(w_data_frame) );
     
     // Brad rate timer
-    counter_with_strobe #( .WIDTH( COUNTER_WIDTH ), .LATENCY(COUNTER_LATENCY) ) 
+    counter_with_strobe #( .WIDTH( COUNTER_WIDTH ), .LATENCY(LATENCY) ) 
         bit_counter( .clk( clk ), .rst( r_rx_state[RX_STATE_IDLE] ), .enable( ce ),
             .reset_value( UART_CONFIG_DELAY_FRAMES ), .strobe( w_bit_ce ) );
 
     // Over sample timer
-    counter_with_strobe #( .WIDTH( COUNTER_WIDTH - $clog2(SAMPLE_COUNT) ), .LATENCY(COUNTER_LATENCY) ) 
+    counter_with_strobe #( .WIDTH( COUNTER_WIDTH - $clog2(SAMPLE_COUNT) ), .LATENCY(LATENCY) ) 
         sample_counter ( .clk( clk ), .rst( r_rx_state[RX_STATE_IDLE] ), .enable( ce ),
             .reset_value( r_sample_clk_rst_value ), .strobe( w_sample_ce ) );
 
