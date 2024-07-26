@@ -101,8 +101,6 @@ module uart_rx
     wire                                        w_sample_buffer_SUM;
     wire                                        w_sample_buffer_neq_zero;
     wire                                        w_sample_buffer_neq_SAMPLE_COUNT;
-    wire [3:0]                                  w_goto_next_state;
-    wire [3:0]                                  w_goto_idle_state;
 
     initial begin
         uart_rx_ready   <= 0;
@@ -174,12 +172,14 @@ module uart_rx
     end
 
 // r_rx_state
-    reg [3:0] r_goto_next_state = 0;
+    wire    [3:0]   w_goto_next_state;
+    reg     [3:0]   r_goto_next_state = 0;
+    wire    [2:0]   w_goto_idle_state;
+    reg     [2:0]   r_goto_idle_state = 0;
     assign w_goto_next_state =  {   &{r_rx_state[RX_STATE_IDLE],      ce,         !w_rx_pin_syn},                   // enter start state
                                     &{r_rx_state[RX_STATE_START],     w_bit_ce,   !w_sample_value},                 // enter read state
                                     &{r_rx_state[RX_STATE_READ],      w_rx_bit_number_eq_DATABITS},                 // enter parity state
                                     &{r_rx_state[RX_STATE_PARITY],    w_bit_ce || UART_CONFIG_PARITY == `UART_PARITY_NONE} };//enter stop state
-    reg [2:0] r_goto_idle_state = 0;
     assign w_goto_idle_state =  {   &{r_rx_state[RX_STATE_START],     w_bit_ce,   w_sample_value},                  // exit false start
                                     &{r_rx_state[RX_STATE_STOP],      ce},                                          // exit when finished
                                     rst };
@@ -196,11 +196,9 @@ module uart_rx
         if( |r_goto_idle_state ) begin
             r_rx_state <= 'd1;
             r_rx_state_changed <= 1'b1;
-        end else begin 
-            if( |r_goto_next_state ) begin
-                r_rx_state <= r_rx_state << 1;
-                r_rx_state_changed <= 1'b1;
-            end
+        end else if( |r_goto_next_state ) begin
+            r_rx_state <= r_rx_state << 1;
+            r_rx_state_changed <= 1'b1;
         end
     end
 

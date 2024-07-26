@@ -26,7 +26,7 @@ module fifo #(
     assign full_flag    = {~front[aw], front[aw-1:0]} == back;
 
     reg     [aw:0] r_almost_empty = 0;
-    always @( posedge clk ) r_almost_empty <= front + A_EMPTY;
+    always @( posedge clk ) r_almost_empty <= front + A_EMPTY[0+:aw];
     assign almost_empty = r_almost_empty >= back;
 
     reg     [aw:0] r_almost_full = 0;

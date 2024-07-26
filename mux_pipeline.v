@@ -155,7 +155,7 @@ module mux_combinational #(
     
     input   wire    [(STRUCTURE_SIZE*WIDTH)-1:0]        in_pipeline;
     output  wire    [(STRUCTURE_SIZE*WIDTH)-1:0]        out_pipeline;
-    wire    [((INPUT_COUNT+STRUCTURE_SIZE-1)*WIDTH)-1:0]  w_input_chain;
+    wire    [((INPUT_COUNT+STRUCTURE_SIZE)*WIDTH)-1:0]  w_input_chain;
     assign w_input_chain = {in_pipeline,in};
     generate
         initial if(PRINT!=0)$display("INPUT_COUNT:%0d MUX_SIZE:%0d STRUCTURE_TYPE:%0d STRUCTURE_SIZE:%0d STRUCTURE_DEPTH:%0d SEL_WIDTH:%0d", INPUT_COUNT, MUX_SIZE, TYPE, STRUCTURE_SIZE, STRUCTURE_DEPTH, SEL_WIDTH);
