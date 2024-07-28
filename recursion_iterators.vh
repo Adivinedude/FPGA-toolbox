@@ -309,21 +309,21 @@ function automatic integer f_NaryRecursionGetDepth;
 endfunction
 function automatic integer iterator_NaryRecursionGetDepth;
     input integer base, lut_width, rt;   
-    // SBY throws an error, rewrite to work in verification
-    // iterator_NaryRecursionGetDepth=
-    //     base==1
-    //         ?rt
-    //         :iterator_NaryRecursionGetDepth(
-    //             base / lut_width * lut_width == base
-    //                 ? base / lut_width
-    //                 : base / lut_width + 1
-    //             ,lut_width
-    //             ,rt + 1);
-    begin
-        for( iterator_NaryRecursionGetDepth = 2; base != 1; iterator_NaryRecursionGetDepth = iterator_NaryRecursionGetDepth + 1 ) begin
-            base = (base / lut_width * lut_width == base) ? base / lut_width : base / lut_width + 1;
-        end 
-    end
+    // ToDo: SBY throws an error, rewrite to work in verification
+    iterator_NaryRecursionGetDepth=
+        base==1
+            ?rt
+            :iterator_NaryRecursionGetDepth(
+                base / lut_width * lut_width == base
+                    ? base / lut_width
+                    : base / lut_width + 1
+                ,lut_width
+                ,rt + 1);
+    // begin
+    //     for( iterator_NaryRecursionGetDepth = 2; base != 1; iterator_NaryRecursionGetDepth = iterator_NaryRecursionGetDepth + 1 ) begin
+    //         base = (base / lut_width * lut_width == base) ? base / lut_width : base / lut_width + 1;
+    //     end 
+    // end
 endfunction
     //  initial begin:test_NaryRecursionGetDepth integer idx;$display("f_NaryRecursionGetDepth()");for(idx=2;idx<=10;idx=idx+1)begin $display("\t\t\t:10 lut_width:%d cmp_width:%d",idx,f_NaryRecursionGetDepth(10,idx));end end
 
