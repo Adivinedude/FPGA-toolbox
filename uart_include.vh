@@ -56,24 +56,24 @@
 
     // Setting part width
     `define UART_CONFIG_WIDTH_MODE          1
+    `define UART_CONFIG_WIDTH_FLOWCTRL      2
     `define UART_CONFIG_WIDTH_DATABITS      4
     `define UART_CONFIG_WIDTH_PARITY        2
     `define UART_CONFIG_WIDTH_STOPBITS      1
-    `define UART_CONFIG_WIDTH_FLOWCTRL      2
     `define UART_CONFIG_WIDTH_DELAYFRAMES   15
 
     // single register configuration for modules, define parts
     `define UART_CONFIG_BITS_MODE           24
-    `define UART_CONFIG_BITS_DATABITS       23:20
-    `define UART_CONFIG_BITS_PARITY         19:18
-    `define UART_CONFIG_BITS_STOPBITS       17
-    `define UART_CONFIG_BITS_FLOWCTRL       16:15
+    `define UART_CONFIG_BITS_FLOWCTRL       23:22
+    `define UART_CONFIG_BITS_DATABITS       21:18
+    `define UART_CONFIG_BITS_PARITY         17:16
+    `define UART_CONFIG_BITS_STOPBITS       15
     `define UART_CONFIG_BITS_DELAYFRAMES    14:0
     // default setup fullduplex 8n1  9600
     `define UART_CONFIG_INITIAL_SETTING {   `UART_MODE_FULL_DUPLEX, \
+                                            `UART_FLOWCTRL_NONE,    \
                                             `UART_CONFIG_WIDTH_DATABITS'd8,\
                                             `UART_PARITY_NONE,      \
                                             `UART_STOPBITS_1,       \
-                                            `UART_FLOWCTRL_NONE,    \
                                             `UART_CONFIG_WIDTH_DELAYFRAMES'd2604 }
 `endif

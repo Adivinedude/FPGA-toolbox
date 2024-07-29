@@ -30,7 +30,7 @@
 // This module implements a multi-sample uart input. 
 // 'uart_rx_ready' will go high for 1 clk cycle when dataout is valid.
 // dataout will stay valid until the next transmission is complete 
-// input clock frequency must be  clk_freq >= 1 ÷ [1 ÷ (brad_rate × sample_count)]
+// input clock frequency must be  clk_freq >= 1 ÷ [1 ÷ (BAUD_RATE × sample_count)]
 //
 // Order of Operation.
 //  1) When 'w_rx_pin_syn' goes low, start 'sample_counter','bit_counter' & oversampling.
@@ -57,6 +57,7 @@ module uart_rx
     output  reg [DATA_WIDTH-1:0]    dataout,        // output data, only valid after uart_rx_ready goes high
     output  reg                     uart_rx_ready,  // dataout is valid on HIGH, duration 1 clk cycle
     output  reg                     uart_rx_error,  // Transmission contained a parity error
+    output  wire                    uart_rx_busy,   // receiving transmission
     input   wire                    rst,
     input   wire [`UART_CONFIG_WIDTH-1:0] settings
 );
@@ -107,6 +108,8 @@ module uart_rx
         uart_rx_error   <= 0;
         dataout         <= 0;
     end
+
+    assign uart_rx_busy = !r_rx_state[RX_STATE_IDLE];
 
     // submodules
     // Synchronize rx pin to prevent metastbality
@@ -180,6 +183,7 @@ module uart_rx
                                     &{r_rx_state[RX_STATE_START],     w_bit_ce,   !w_sample_value},                 // enter read state
                                     &{r_rx_state[RX_STATE_READ],      w_rx_bit_number_eq_DATABITS},                 // enter parity state
                                     &{r_rx_state[RX_STATE_PARITY],    w_bit_ce || UART_CONFIG_PARITY == `UART_PARITY_NONE} };//enter stop state
+    
     assign w_goto_idle_state =  {   &{r_rx_state[RX_STATE_START],     w_bit_ce,   w_sample_value},                  // exit false start
                                     &{r_rx_state[RX_STATE_STOP],      ce},                                          // exit when finished
                                     rst };
@@ -192,13 +196,13 @@ module uart_rx
         end else begin
             r_goto_next_state <= w_goto_next_state;
             r_goto_idle_state <= w_goto_idle_state;
-        end
-        if( |r_goto_idle_state ) begin
-            r_rx_state <= 'd1;
-            r_rx_state_changed <= 1'b1;
-        end else if( |r_goto_next_state ) begin
-            r_rx_state <= r_rx_state << 1;
-            r_rx_state_changed <= 1'b1;
+            if( |r_goto_idle_state ) begin
+                r_rx_state <= 'd1;
+                r_rx_state_changed <= 1'b1;
+            end else if( |r_goto_next_state ) begin
+                r_rx_state <= r_rx_state << 1;
+                r_rx_state_changed <= 1'b1;
+            end
         end
     end
 
@@ -217,11 +221,10 @@ module uart_rx
     always @( posedge clk ) begin
         r_rx_bit_number <= w_rx_bit_number_SUM;
         r_rx_bit_number_I2 <= 0;
-        if( w_bit_ce ) begin
-            r_rx_bit_number_I2 <= 1'b1;
-        end
         if( r_rx_state_changed ) begin
             r_rx_bit_number <= 0;
+        end else if( w_bit_ce ) begin
+            r_rx_bit_number_I2 <= 1'b1;
         end
 
     end // always

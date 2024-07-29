@@ -99,6 +99,7 @@ module uart
     wire                        uart_rx_ready;
     wire                        uart_rx_error;
     wire                        uart_rx_write_to_fifo;
+    wire                        uart_rx_busy;
 
 // Rx Module
     uart_rx #(
@@ -112,6 +113,7 @@ module uart
         .dataout(       uart_rx_dataOut ),
         .uart_rx_ready( uart_rx_ready ),
         .uart_rx_error( uart_rx_error ),
+        .uart_rx_busy(  uart_rx_busy ),
         .rst(           rst ),
         .settings(      rx_config )
     );
@@ -173,16 +175,25 @@ module uart
     );
 
     // Send data stored in tx buffer when its available and tx is ready
-    reg r_tx_empty = 0;
+    reg [2:0] r_tx_empty = 0; // timing fix
     reg r_tx_ready = 0;
+    reg r_tx_lockout = 0;
+
+    reg [2:0] r_rx_busy = 0;
     always @( posedge clk ) begin
-        r_tx_empty <= tx_empty;
+        r_tx_empty <= { tx_empty, r_tx_empty[1+:2]}; // timing fix
+        r_rx_busy <= {uart_rx_busy, r_rx_busy[1+:2]};
         r_tx_ready <= uart_tx_txReady;
-        if( send_tx ) begin
-            send_tx  <= 0;
-            r_tx_ready <= 0;
-        end else if( r_tx_ready && !r_tx_empty && ce ) begin
+        send_tx  <= 0;
+
+
+        if( r_tx_ready && !r_tx_empty[0] && ce  && !r_tx_lockout ) begin
             send_tx <= 1;
+            r_tx_lockout <= 1;
+        end
+        if( r_tx_lockout && !r_tx_ready ) begin
+            if( (uart_rx_busy == 0) || (tx_config[`UART_CONFIG_BITS_MODE] == `UART_MODE_FULL_DUPLEX) )
+                r_tx_lockout <= 0;
         end
     end
 endmodule

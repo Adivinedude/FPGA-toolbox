@@ -135,16 +135,14 @@ module uart_tx
 
     always @( posedge clk ) begin
         r_tx_state_changed <= 0;
-        if( r_tx_state_changed ) begin
-            r_goto_next_state <= 0;
-            r_goto_idle_state <= 0;
-        end else begin
-            r_goto_next_state <= w_goto_next_state;
-            r_goto_idle_state <= w_goto_idle_state;
-        end
+        r_goto_next_state <= w_goto_next_state;
+        r_goto_idle_state <= w_goto_idle_state;
+
         if( |r_goto_next_state ) begin
             r_tx_state <= r_tx_state + 1'b1;
             r_tx_state_changed <= 1'b1;
+            r_goto_next_state <= 0;
+            r_goto_idle_state <= 0;
         end
         if( |r_goto_idle_state ) begin
             r_tx_state <= TX_STATE_IDLE;
@@ -172,7 +170,9 @@ module uart_tx
 
     // r_tx_pin     item 2, 3:
     always @( posedge clk ) begin
-        r_tx_pin <= { r_tx_pin[0], w_next_tx_pin };
+        r_tx_pin[1] <= r_tx_pin[0];
+        if( ce )
+            r_tx_pin[0] <= w_next_tx_pin;
     end
 
     // r_parity     item 4:
