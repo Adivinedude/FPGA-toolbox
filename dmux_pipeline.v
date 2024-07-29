@@ -37,7 +37,7 @@ module dmux_lfmr #(
     parameter PRINT = 0
 )( clk, sel, in, out );
     input   wire                                clk;
-    input   wire    [$clog2(OUTPUT_COUNT)-1:0]  sel;
+    input   wire    [$clog2(OUTPUT_COUNT):0]    sel;
     input   wire    [WIDTH-1:0]                 in;
     output  wire    [(WIDTH*OUTPUT_COUNT)-1:0]  out;
     `include "recursion_iterators.vh"
@@ -70,7 +70,7 @@ module dmux_lfmr #(
     wire    [(((STRUCTURE_SIZE-1)+OUTPUT_COUNT)*WIDTH)-1:0] w_out_pipeline;
 
     dmux_combinational #(.WIDTH(WIDTH), .OUTPUT_COUNT(OUTPUT_COUNT), .LATENCY(LATENCY), .TYPE(TYPE), .PRINT(PRINT) )
-        mux_object(.clk(clk), .sel(sel), .in(in), .in_pipeline(r_in_pipeline), .out(out), .out_pipeline(w_out_pipeline) );
+        dmux_object(.clk(clk), .sel(sel), .in(in), .in_pipeline(r_in_pipeline), .out(out), .out_pipeline(w_out_pipeline) );
     
     always @( posedge clk ) r_in_pipeline <= w_out_pipeline;
 endmodule
@@ -85,7 +85,7 @@ module dmux_combinational #(
     parameter PRINT = 0
 )( clk, sel, in, in_pipeline, out, out_pipeline );
     input   wire                                clk;
-    input   wire    [$clog2(OUTPUT_COUNT)-1:0]  sel;
+    input   wire    [$clog2(OUTPUT_COUNT):0]    sel;
     input   wire    [WIDTH-1:0]                 in;
     output  wire    [(WIDTH*OUTPUT_COUNT)-1:0]  out;
 
