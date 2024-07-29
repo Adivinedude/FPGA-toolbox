@@ -37,7 +37,7 @@ module dmux_lfmr #(
     parameter PRINT = 0
 )( clk, sel, in, out );
     input   wire                                clk;
-    input   wire    [$clog2(OUTPUT_COUNT):0]    sel;
+    input   wire    [$clog2(OUTPUT_COUNT):0]  sel;
     input   wire    [WIDTH-1:0]                 in;
     output  wire    [(WIDTH*OUTPUT_COUNT)-1:0]  out;
     `include "recursion_iterators.vh"

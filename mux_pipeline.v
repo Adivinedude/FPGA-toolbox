@@ -36,7 +36,7 @@ module mux_lfmr #(
     parameter PRINT = 0
 )( clk, sel, in, out );
     input   wire                                clk;
-    input   wire    [$clog2(INPUT_COUNT):0]     sel;
+    input   wire    [$clog2(INPUT_COUNT)-1:0]   sel;
     input   wire    [(WIDTH*INPUT_COUNT)-1:0]   in;
     output  wire    [WIDTH-1:0]                 out;
     `include "recursion_iterators.vh"
@@ -84,7 +84,7 @@ module mux_combinational #(
     parameter PRINT = 0
 )( clk, sel, in, in_pipeline, out, out_pipeline );
     input   wire                                clk;
-    input   wire    [$clog2(INPUT_COUNT):0]     sel;
+    input   wire    [$clog2(INPUT_COUNT)-1:0]   sel;
     input   wire    [(WIDTH*INPUT_COUNT)-1:0]   in;
     output  wire    [WIDTH-1:0]                 out;
 
@@ -150,12 +150,12 @@ module mux_combinational #(
     // find the size of the vector needed
     localparam STRUCTURE_SIZE = f_GetVectorSize(0);
     localparam STRUCTURE_DEPTH = f_GetStructureDepth(0);
-    localparam SEL_WIDTH = $clog2(MUX_SIZE)+1;
+    localparam SEL_WIDTH = $clog2(MUX_SIZE);
     localparam TOTAL_UNIT_COUNT = f_NaryRecursionGetVectorSize(INPUT_COUNT,MUX_SIZE);
     
     input   wire    [(STRUCTURE_SIZE*WIDTH)-1:0]        in_pipeline;
     output  wire    [(STRUCTURE_SIZE*WIDTH)-1:0]        out_pipeline;
-    wire    [((INPUT_COUNT+STRUCTURE_SIZE)*WIDTH)-1:0]  w_input_chain;
+    wire    [((INPUT_COUNT+STRUCTURE_SIZE-1)*WIDTH)-1:0]  w_input_chain;
     assign w_input_chain = {in_pipeline,in};
     generate
         initial if(PRINT!=0)$display("INPUT_COUNT:%0d MUX_SIZE:%0d STRUCTURE_TYPE:%0d STRUCTURE_SIZE:%0d STRUCTURE_DEPTH:%0d SEL_WIDTH:%0d", INPUT_COUNT, MUX_SIZE, TYPE, STRUCTURE_SIZE, STRUCTURE_DEPTH, SEL_WIDTH);
