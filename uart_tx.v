@@ -38,12 +38,7 @@
 
                                                   
 `default_nettype none
-`ifndef FORMAL
-    `include "toolbox/uart_include.vh"
-`else
-    `define TEST_BENCH_RUNNING
-    `include "uart_include.v"
-`endif
+`include "uart_include.vh"
 
 module uart_tx
 #(

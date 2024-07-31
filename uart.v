@@ -39,11 +39,9 @@
 // data using the uart protocol.
 // ToDo: 
 //  1) implement flow control
-//  2) implement half duplex mode
-
 
 `default_nettype none
-`include "toolbox/uart_include.vh"
+`include "uart_include.vh"
 module uart
 #(
     parameter   COUNTER_WIDTH   = `UART_CONFIG_WIDTH_DELAYFRAMES,
