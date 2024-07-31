@@ -41,30 +41,8 @@ module mux_lfmr #(
     output  wire    [WIDTH-1:0]                 out;
     `include "recursion_iterators.vh"
 
-    function automatic integer f_GetMuxSize;
-        input unused;
-        begin
-            case(TYPE)
-                default:    f_GetMuxSize = f_NaryRecursionGetUnitWidthForLatency(INPUT_COUNT, LATENCY);
-            endcase
-            if(PRINT!=0)$write("f_GetMuxSize: LATENCY:%0d\tINPUT_COUNT:%0d \f_NaryRecursionGetUnitWidthForLatency:%0d\t",LATENCY, INPUT_COUNT, f_GetMuxSize );
-            f_GetMuxSize = 'd1 << $clog2(f_GetMuxSize);
-            if(PRINT!=0)$display("f_GetMuxSize:%0d", f_GetMuxSize);
-        end
-    endfunction
-    localparam MUX_SIZE = f_GetMuxSize(0);
-
-    function automatic integer f_GetVectorSize;
-        input unused;
-        begin
-            case(TYPE)
-                1:          f_GetVectorSize = f_NaryRecursionGetVectorSizeOptimized( INPUT_COUNT, MUX_SIZE );
-                default:    f_GetVectorSize = f_NaryRecursionGetVectorSize( INPUT_COUNT, MUX_SIZE );
-            endcase
-        end
-    endfunction
-
-    localparam STRUCTURE_SIZE = f_GetVectorSize(0);
+    localparam MUX_SIZE = mux_object.f_GetMuxSize(0);
+    localparam STRUCTURE_SIZE = mux_object.f_GetVectorSize(0);
     reg     [(STRUCTURE_SIZE*WIDTH)-1:0]    r_in_pipeline;
     wire    [(STRUCTURE_SIZE*WIDTH)-1:0]    w_out_pipeline;
 
