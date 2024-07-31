@@ -64,17 +64,22 @@ function automatic integer f_TailRecursionGetVectorSize;
 endfunction
 function automatic integer iterator_TailRecursionGetVectorSize;
     input integer base, lut_width, current_count;         
-    iterator_TailRecursionGetVectorSize=
-        base==0
-            ?current_count
-            :iterator_TailRecursionGetVectorSize(
-                base-(base>=lut_width
-                    ?(current_count==0
-                        ?lut_width
-                        :lut_width-1)
-                    :base)
-                ,lut_width
-                ,current_count+1);
+    // iterator_TailRecursionGetVectorSize=
+    //     base==0
+    //         ?current_count
+    //         :iterator_TailRecursionGetVectorSize(
+    //             base-(base>=lut_width
+    //                 ?(current_count==0
+    //                     ?lut_width
+    //                     :lut_width-1)
+    //                 :base)
+    //             ,lut_width
+    //             ,current_count+1);
+    begin
+        for( base = base; base != 0; current_count = current_count + 1 )
+            base = base-(base>=lut_width ? (current_count==0 ? lut_width : lut_width-1) : base );
+        iterator_TailRecursionGetVectorSize=current_count;
+    end
 endfunction
     // initial begin:test_TailRecursionGetVectorSize integer idx;$display("f_TailRecursionGetVectorSize()");for(idx=2;idx<=10;idx=idx+1)begin $display("\t\t\t:10 lut_width:%d cmp_width:%d",idx,f_TailRecursionGetVectorSize(10,idx));end end
 
@@ -90,22 +95,30 @@ function automatic integer f_TailRecursionGetLastUnitWidth;
 endfunction
 function automatic integer iterator_TailRecursionGetLastUnitWidth;
     input integer base, lut_width, rt, results;
-    iterator_TailRecursionGetLastUnitWidth=
-        base==0
-            ?results
-            :iterator_TailRecursionGetLastUnitWidth(
-                base-(base>=lut_width
-                    ?(rt==0
-                        ?lut_width
-                        :lut_width-1)
-                    :base),
-                lut_width,
-                rt+1,
-                (base>=lut_width
-                    ?lut_width
-                    :base+1));
+    // iterator_TailRecursionGetLastUnitWidth=
+    //     base==0
+    //         ?results
+    //         :iterator_TailRecursionGetLastUnitWidth(
+    //             base-(base>=lut_width
+    //                 ?(rt==0
+    //                     ?lut_width
+    //                     :lut_width-1)
+    //                 :base),
+    //             lut_width,
+    //             rt+1,
+    //             (base>=lut_width
+    //                 ?lut_width
+    //                 :base+1));
+    begin
+        for( base = base; base != 0; base = base) begin
+            results = (base>=lut_width ? lut_width : base + 1);
+            base = base-(base>=lut_width ?(rt==0 ? lut_width : lut_width-1) : base);
+            rt = rt + 1;
+        end
+        iterator_TailRecursionGetLastUnitWidth = results;
+    end
 endfunction
-    //initial begin:test_TailRecursionGetLastUnitWidth integer idx; for(idx=2;idx<10;idx=idx+1)$display("f_TailRecursionGetLastUnitWidth(.base(10).lut_width(%d)) last_lut_width%d",idx,f_TailRecursionGetLastUnitWidth(10, idx));end   
+    // initial begin:test_TailRecursionGetLastUnitWidth integer idx; for(idx=2;idx<10;idx=idx+1)$display("f_TailRecursionGetLastUnitWidth(.base(10).lut_width(%1d)) last_lut_width%d",idx,f_TailRecursionGetLastUnitWidth(10, idx));end   
 
 // f_TailRecursionGetUnitWidthForLatency - Returns the smallest LUT width needed to set the structure's latency to a maximum value.
 //                           The actual latency will be less than or equal to the request
@@ -120,10 +133,15 @@ function automatic integer f_TailRecursionGetUnitWidthForLatency;
 endfunction
 function automatic integer iterator_TailRecursionGetUnitWidthForLatency;
     input integer base, latency, lut_width;
-    iterator_TailRecursionGetUnitWidthForLatency=
-        (iterator_TailRecursionGetVectorSize(base,lut_width,0)<=latency)
-            ?lut_width
-            :iterator_TailRecursionGetUnitWidthForLatency(base,latency,lut_width+1);
+    // iterator_TailRecursionGetUnitWidthForLatency=
+    //     (iterator_TailRecursionGetVectorSize(base,lut_width,0)<=latency)
+    //         ?lut_width
+    //         :iterator_TailRecursionGetUnitWidthForLatency(base,latency,lut_width+1);
+    begin
+        for( lut_width = 2; iterator_TailRecursionGetVectorSize(base,lut_width,0) > latency; lut_width = lut_width + 1)
+            base = base;
+        iterator_TailRecursionGetUnitWidthForLatency = lut_width;
+    end
 endfunction
     // initial begin:test_TailRecursionGetUnitWidthForLatency integer idx;$display("f_TailRecursionGetUnitWidthForLatency()");for(idx=1;idx<=10;idx=idx+1)begin $display("\t\t\tbase:10 latency:%d lut_width:%d",idx,f_TailRecursionGetUnitWidthForLatency(10,idx));end end
 
@@ -143,23 +161,31 @@ function automatic integer f_TailRecursionGetUnitInputAddress;
 endfunction
 function automatic integer iterator_TailRecursionGetUnitInputAddress;
     input integer cmp_width, lut_width, unit_index, input_index, base_input_index, past_output_index, current_unit;
-    iterator_TailRecursionGetUnitInputAddress=
-        (current_unit==unit_index)
-            ?unit_index==0
-                ?input_index
-                :input_index==0
-                    ?past_output_index+cmp_width
-                    :(base_input_index-1)+input_index
-            :iterator_TailRecursionGetUnitInputAddress(
-                cmp_width,
-                lut_width,
-                unit_index,
-                input_index,
-                base_input_index==0
-                    ?base_input_index+lut_width
-                    :base_input_index+(lut_width-1),
-                past_output_index+1,
-                current_unit+1);
+    // iterator_TailRecursionGetUnitInputAddress=
+    //     (current_unit==unit_index)
+    //         ?unit_index==0
+    //             ?input_index
+    //             :input_index==0
+    //                 ?past_output_index+cmp_width
+    //                 :(base_input_index-1)+input_index
+    //         :iterator_TailRecursionGetUnitInputAddress(
+    //             cmp_width,
+    //             lut_width,
+    //             unit_index,
+    //             input_index,
+    //             base_input_index==0
+    //                 ?base_input_index+lut_width
+    //                 :base_input_index+(lut_width-1),
+    //             past_output_index+1,
+    //             current_unit+1);
+    begin
+        for(cmp_width = cmp_width; current_unit != unit_index; cmp_width = cmp_width ) begin
+            base_input_index = base_input_index == 0 ? ( base_input_index + lut_width ) : ( base_input_index + ( lut_width - 1 ) );
+            past_output_index = past_output_index + 1;
+            current_unit = current_unit + 1;
+        end
+        iterator_TailRecursionGetUnitInputAddress = unit_index == 0 ? input_index : ( input_index==0 ? past_output_index + cmp_width : (base_input_index - 1) + input_index );
+    end
 endfunction
     // initial begin:test_TailRecursionGetUnitInputAddress integer unit_index,input_index;$display("f_TailRecursionGetUnitInputAddress");$display("\t\t\tBase:10 LUT_WIDTH:4 LUT_COUNT:3");for(unit_index=0;unit_index<3;unit_index=unit_index+1)for( input_index=0;input_index<4;input_index=input_index+1)$display("unit:%d input:%d address:%d",unit_index,input_index,f_TailRecursionGetUnitInputAddress(10,4,unit_index,input_index));end
 
@@ -229,17 +255,22 @@ endfunction
 
 function automatic integer iterator_NaryRecursionVectorSize;
     input integer base, lut_width, rt;   
-    iterator_NaryRecursionVectorSize=
-        base==1
-            ?rt
-            :iterator_NaryRecursionVectorSize(
-                base / lut_width * lut_width == base
-                    ? base / lut_width
-                    : base / lut_width + 1
-                ,lut_width
-                ,rt + ((base / lut_width * lut_width == base)
-                    ? base / lut_width
-                    : (base / lut_width) + 1));
+    // iterator_NaryRecursionVectorSize=
+    //     base==1
+    //         ?rt
+    //         :iterator_NaryRecursionVectorSize(
+    //             base / lut_width * lut_width == base
+    //                 ? base / lut_width
+    //                 : base / lut_width + 1
+    //             ,lut_width
+    //             ,rt + ((base / lut_width * lut_width == base)
+    //                 ? base / lut_width
+    //                 : (base / lut_width) + 1));
+    begin
+        for( base = base; base != 1; base = base / lut_width * lut_width == base ? base / lut_width : base / lut_width + 1)
+            rt = rt + ((base / lut_width * lut_width == base) ? base / lut_width : (base / lut_width) + 1);
+        iterator_NaryRecursionVectorSize = rt;
+    end
 endfunction
     // initial begin:test_NaryRecursionVectorSize integer idx;$display("f_NaryRecursionGetVectorSize()");for(idx=2;idx<=10;idx=idx+1)begin $display("\t\t\t:10 lut_width:%d cmp_width:%d",idx,f_NaryRecursionGetVectorSize(10,idx));end end
 
@@ -320,7 +351,7 @@ function automatic integer iterator_NaryRecursionGetDepth;
     //             ,lut_width
     //             ,rt + 1);
     begin
-        for( iterator_NaryRecursionGetDepth = 2; base != 1; iterator_NaryRecursionGetDepth = iterator_NaryRecursionGetDepth + 1 ) begin
+        for( iterator_NaryRecursionGetDepth = 0; base != 1; iterator_NaryRecursionGetDepth = iterator_NaryRecursionGetDepth + 1 ) begin
             base = (base / lut_width * lut_width == base) ? base / lut_width : base / lut_width + 1;
         end 
     end
@@ -346,17 +377,23 @@ function automatic integer iterator_NaryRecursionGetUnitDepth;
     begin : block_NaryRecursionGetUnitDepth
         integer number_of_units_on_this_level;
         number_of_units_on_this_level = (base / lut_width * lut_width == base ? base / lut_width : base / lut_width + 1);
-        // $display("iterator_NaryRecursionGetUnitDepth base%d lut_width%d unit_index%d rt%d nouotl%d", base, lut_width, unit_index, rt, number_of_units_on_this_level);
-        iterator_NaryRecursionGetUnitDepth=
-            base == 1
-                ? ~0 // error, unit is out of range
-                : number_of_units_on_this_level > unit_index
-                    ?rt
-                    :iterator_NaryRecursionGetUnitDepth(
-                        number_of_units_on_this_level,
-                        lut_width, 
-                        unit_index > number_of_units_on_this_level ? unit_index - number_of_units_on_this_level : 0,
-                        rt + 1);
+        // // $display("iterator_NaryRecursionGetUnitDepth base%d lut_width%d unit_index%d rt%d nouotl%d", base, lut_width, unit_index, rt, number_of_units_on_this_level);
+        // iterator_NaryRecursionGetUnitDepth=
+        //     base == 1
+        //         ? ~0 // error, unit is out of range
+        //         : number_of_units_on_this_level > unit_index
+        //             ?rt
+        //             :iterator_NaryRecursionGetUnitDepth(
+        //                 number_of_units_on_this_level,
+        //                 lut_width, 
+        //                 unit_index > number_of_units_on_this_level ? unit_index - number_of_units_on_this_level : 0,
+        //                 rt + 1);
+        for( number_of_units_on_this_level = number_of_units_on_this_level; base != 1 && number_of_units_on_this_level <= unit_index; rt = rt + 1) begin
+            base = number_of_units_on_this_level;
+            unit_index = unit_index > number_of_units_on_this_level ? unit_index - number_of_units_on_this_level : 0;
+            number_of_units_on_this_level = (base / lut_width * lut_width == base ? base / lut_width : base / lut_width + 1);
+        end
+        iterator_NaryRecursionGetUnitDepth = base == 1 ? ~0 : rt;
     end
 endfunction
     // initial begin:test_NaryRecursionGetUnitDepth integer idx;$display("f_NaryRecursionGetUnitDepth()");for(idx=0;idx<=10+f_NaryRecursionGetVectorSize(10,2);idx=idx+1)begin $display("\t\t\tbase:10 lut_width:2 unit:%d\tdepth:%d",idx,f_NaryRecursionGetUnitDepth(10,2,idx));end end
@@ -374,12 +411,14 @@ function automatic integer f_NaryRecursionGetUnitWidthForLatency;
 endfunction
 function automatic integer iterator_NaryRecursionGetUnitWidthForLatency;
     input integer base, latency, lut_width;
-    iterator_NaryRecursionGetUnitWidthForLatency=
-        latency==0
-            ?base
-            :(f_NaryRecursionGetDepth(base,lut_width)<=latency)
-                ?lut_width
-                :iterator_NaryRecursionGetUnitWidthForLatency(base,latency,lut_width+1);
+    begin
+        iterator_NaryRecursionGetUnitWidthForLatency=
+            latency==0
+                ?base
+                :(f_NaryRecursionGetDepth(base,lut_width)<=latency)
+                    ?lut_width
+                    :iterator_NaryRecursionGetUnitWidthForLatency(base,latency,lut_width+1);
+    end
 endfunction
     // initial begin:test_NaryRecursionGetLastUnitWidthForLatency integer idx;$display("f_NaryRecursionGetUnitWidthForLatency()");for(idx=1;idx<=10;idx=idx+1)begin $display("\t\t\tbase:10 latency:%d lut_width:%d",idx,f_NaryRecursionGetUnitWidthForLatency(10,idx));end end
 
