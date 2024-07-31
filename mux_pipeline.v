@@ -122,11 +122,6 @@ module mux_lfmr #(
         // only change 'in' when pipeline if finished and output is valid
         always @(posedge clk) `ASSUME( !past_valid || ready || $stable(in) );
 
-        /*
-            input   wire    [$clog2(INPUT_COUNT)-1:0]   sel;
-            input   wire    [(WIDTH*INPUT_COUNT)-1:0]   in;
-            output  wire    [WIDTH-1:0]                 out;
-        */
         // ensure the simulation is working properly
         `ifdef FORMAL_MUX_LFMR
             // report an output !zero and a sel !zero.
