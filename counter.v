@@ -41,12 +41,11 @@ module counter_with_strobe
         output  wire                strobe
     );
 
-    reg     strobe_ff = 0;
-    reg     [WIDTH-1:0] counter_ff = 'd1;
+    reg                 strobe_ff   = 0;
+    reg     [WIDTH-1:0] counter_ff  = 'd1;
     wire    [WIDTH-1:0] w_counter_ff;
     wire                trigger;
-    math_lfmr #(.WIDTH(WIDTH), .LATENCY(LATENCY) ) counter_plus_plus  
-    // math_lfmr #(.WIDTH(WIDTH), .LATENCY(LATENCY > 0 ? LATENCY - 1 : 0) ) counter_plus_plus  
+    math_lfmr #(.WIDTH(WIDTH), .LATENCY(LATENCY > 0 ? LATENCY - 1 : 0) ) counter_plus_plus  
     (
         .clk(   clk ),
         .rst(   (trigger && enable) || rst ),
@@ -100,7 +99,7 @@ module counter_with_strobe
     wire    valid;
 
     reg [7:0]   ready_tracker   = 0;
-    assign      ready           = ready_tracker >= LATENCY;
+    assign      ready           = LATENCY == 0 ? 1'b1 : ready_tracker >= LATENCY;
     reg         strobe_valid    = 0;
     assign      valid           = strobe_valid;
 
