@@ -1,0 +1,53 @@
+[tasks]
+bmc_l0 l0 bmc
+bmc_l1 l1 bmc
+bmc_l2 l2 bmc
+bmc_l3 l3 bmc
+bmc_l4 l4 bmc
+
+prove_l0 l0 prove
+prove_l1 l1 prove
+prove_l2 l2 prove
+prove_l3 l3 prove
+prove_l4 l4 prove
+
+cover_l0 l0 cover
+cover_l1 l1 cover
+cover_l2 l2 cover
+cover_l3 l3 cover
+cover_l4 l4 cover
+
+[options]
+bmc: mode bmc
+prove: mode prove
+cover: mode cover
+
+l0: depth 32
+l1: depth 48
+l2: depth 64
+l3: depth 80
+l4: depth 96
+
+[engines]
+smtbmc
+
+[script]
+read -formal recursion_iterators.vh
+read -formal math_pipelined.v
+read -define FORMAL_COUNTER_WITH_STROBE
+read -formal counter.v
+
+l0: hierarchy -check -top counter_with_strobe -chparam WIDTH 4 -chparam LATENCY 0
+l1: hierarchy -check -top counter_with_strobe -chparam WIDTH 4 -chparam LATENCY 1
+l2: hierarchy -check -top counter_with_strobe -chparam WIDTH 4 -chparam LATENCY 2
+l3: hierarchy -check -top counter_with_strobe -chparam WIDTH 4 -chparam LATENCY 3
+l4: hierarchy -check -top counter_with_strobe -chparam WIDTH 4 -chparam LATENCY 4
+
+# ... other files would go here
+prep -top counter_with_strobe
+
+[files]
+# List all files and relative paths here
+counter.v
+recursion_iterators.vh
+math_pipelined.v
