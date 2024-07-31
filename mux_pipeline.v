@@ -36,9 +36,10 @@ module mux_lfmr #(
     parameter PRINT = 0
 )( clk, sel, in, out );
     input   wire                                clk;
-    input   wire    [$clog2(INPUT_COUNT)-1:0]   sel;
+    input   wire    [$clog2(INPUT_COUNT):0]     sel;
     input   wire    [(WIDTH*INPUT_COUNT)-1:0]   in;
     output  wire    [WIDTH-1:0]                 out;
+    
     `include "recursion_iterators.vh"
 
     function automatic integer f_GetMuxSize;
@@ -72,6 +73,77 @@ module mux_lfmr #(
         mux_object(.clk(clk), .sel(sel), .in(in), .in_pipeline(r_in_pipeline), .out(out), .out_pipeline(w_out_pipeline) );
     
     always @( posedge clk ) r_in_pipeline <= w_out_pipeline;
+
+    `ifdef FORMAL
+        `define ASSERT assert
+        `ifdef FORMAL_MUX_LFMR
+            `define ASSUME assume
+        `else
+            `define ASSUME assert
+        `endif
+
+        // Testing values
+        wire past_valid;
+        integer past_counter = 0;
+        assign past_valid = past_counter >= LATENCY;
+        always @( posedge clk ) 
+            past_counter <= (past_valid) 
+                                ? past_counter 
+                                : past_counter + 1;
+
+        integer ready_tracker = 0;
+        wire ready = ready_tracker >= LATENCY+1;
+        always @( posedge clk ) begin
+            if( past_valid ) begin
+                ready_tracker <= $changed(sel) || $changed(in) 
+                                    ? 0 
+                                    : ready
+                                        ? ready_tracker
+                                        : ready_tracker + 1;
+            end
+        end
+
+        reg [$clog2(INPUT_COUNT)-1:0]   p_sel;
+        reg [(WIDTH*INPUT_COUNT)-1:0]   p_in;
+        always @(posedge clk) begin
+            if( past_valid ) begin
+                p_sel <= sel;
+                p_in  <= in;
+            end
+        end
+
+        // Assume inputs
+        // keep 'sel' in a valid range
+        always @(posedge clk) `ASSUME( sel < INPUT_COUNT );
+
+        // only change 'sel' when pipeline if finished and output is valid
+        always @(posedge clk) `ASSUME( !past_valid || ready || $stable(sel) );
+
+        // only change 'in' when pipeline if finished and output is valid
+        always @(posedge clk) `ASSUME( !past_valid || ready || $stable(in) );
+
+        /*
+            input   wire    [$clog2(INPUT_COUNT)-1:0]   sel;
+            input   wire    [(WIDTH*INPUT_COUNT)-1:0]   in;
+            output  wire    [WIDTH-1:0]                 out;
+        */
+        // ensure the simulation is working properly
+        `ifdef FORMAL_MUX_LFMR
+            // report an output !zero and a sel !zero.
+            always @( posedge clk ) cover( ready && p_in[WIDTH*p_sel+:WIDTH] == $past(out) && p_sel != 0 && $past(out) != 0);
+        `else
+            always @( posedge clk ) cover( ready && in[WIDTH*sel+:WIDTH] == out && sel != 0);
+        `endif
+
+        // Assert the outputs
+        // check of the output is correct when the pipeline is finished propagating.
+        always @(posedge clk) begin
+            if( past_valid ) begin
+                if( ready )
+                    assert( p_in[WIDTH*p_sel+:WIDTH] == $past(out) );
+            end
+        end
+    `endif
 endmodule
 
 module mux_combinational #(
@@ -84,7 +156,7 @@ module mux_combinational #(
     parameter PRINT = 0
 )( clk, sel, in, in_pipeline, out, out_pipeline );
     input   wire                                clk;
-    input   wire    [$clog2(INPUT_COUNT)-1:0]   sel;
+    input   wire    [$clog2(INPUT_COUNT):0]     sel;
     input   wire    [(WIDTH*INPUT_COUNT)-1:0]   in;
     output  wire    [WIDTH-1:0]                 out;
 
@@ -169,7 +241,7 @@ module mux_combinational #(
                         initial if(PRINT!=0)$write(" (II:%2d A:%2d)", input_index, f_GetInputAddress(unit_index, input_index) );
                         assign unit_inputs[WIDTH*input_index+:WIDTH] = w_input_chain[f_GetInputAddress(unit_index, input_index)*WIDTH+:WIDTH];
                     end else 
-                        assign unit_inputs[WIDTH*input_index+:WIDTH] = {WIDTH{1'bz}};
+                        assign unit_inputs[WIDTH*input_index+:WIDTH] = {WIDTH{1'b0}};
                 end
                 // select the units output.
                 if( f_GetUnitWidth(unit_index) != 1 ) begin

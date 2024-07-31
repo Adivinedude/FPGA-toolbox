@@ -1,0 +1,51 @@
+[tasks]
+bmc_l0 l0 bmc
+bmc_l1 l1 bmc
+bmc_l2 l2 bmc
+bmc_l3 l3 bmc
+bmc_l4 l4 bmc
+
+prove_l0 l0 prove
+prove_l1 l1 prove
+prove_l2 l2 prove
+prove_l3 l3 prove
+prove_l4 l4 prove
+
+cover_l0 l0 cover
+cover_l1 l1 cover
+cover_l2 l2 cover
+cover_l3 l3 cover
+cover_l4 l4 cover
+
+[options]
+bmc: mode bmc
+prove: mode prove
+cover: mode cover
+
+l0: depth 4 
+l1: depth 8
+l2: depth 16
+l3: depth 32
+l4: depth 64
+
+[engines]
+smtbmc
+
+[script]
+read -formal recursion_iterators.vh
+read -define FORMAL_MUX_LFMR
+read -formal mux_pipeline.v
+
+l0: hierarchy -check -top mux_lfmr -chparam WIDTH 8 -chparam INPUT_COUNT 8 -chparam LATENCY 0
+l1: hierarchy -check -top mux_lfmr -chparam WIDTH 8 -chparam INPUT_COUNT 8 -chparam LATENCY 1
+l2: hierarchy -check -top mux_lfmr -chparam WIDTH 8 -chparam INPUT_COUNT 8 -chparam LATENCY 2
+l3: hierarchy -check -top mux_lfmr -chparam WIDTH 8 -chparam INPUT_COUNT 8 -chparam LATENCY 3
+l4: hierarchy -check -top mux_lfmr -chparam WIDTH 8 -chparam INPUT_COUNT 8 -chparam LATENCY 4
+
+# ... other files would go here
+prep -top mux_lfmr
+
+[files]
+# List all files and relative paths here
+mux_pipeline.v
+recursion_iterators.vh
