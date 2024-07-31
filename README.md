@@ -11,6 +11,13 @@ High speed demultiplexer with variable width. Operating modes include 'Fixed lat
 Building blocks for a fast pipelined ripple carry ALU with configurable width and latency.
 * math_lfmr - linear feedback math register. Wrapper module, managing the pipelining of a single vector.
 * math_combinational - Purely combinational ALU module, with automatic data structure and carry chain construction.
+    * sum
+    * sub
+    * reducing AND
+    * reducing OR
+    * reducing XOR
+    * equals
+    * not equals
 
 ## [mux_pipeline.v](mux_pipeline.v)
 High speed multiplexer with variable width. Operating modes include 'Fixed latency' and 'Optimize for size'
