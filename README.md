@@ -35,7 +35,7 @@ A dff chain for external input synchronization. Parameters for input/output chai
 and output clocks.
 
 ## [uart.v](uart.v)
-A configurable Universal Asynchronous Receiver Transmitter with auto configuring data structures capable of 200+.
+A configurable Universal Asynchronous Receiver Transmitter.
 * [uart_include.vh](uart_include.vh) - Configuration parameters for the uart objects.
 * [uart_rx.v](uart_rx.v) - Uart receiver module.
 * [uart_tx.v](uart_tx.v) - Uart transmitter module.
