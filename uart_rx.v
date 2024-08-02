@@ -280,4 +280,88 @@ module uart_rx
                 dataout <= r_data_frame; 
         end
     end
+
+`ifdef FORMAL
+    `define ASSERT assert
+    `ifdef FORMAL_UART_RX
+        `define ASSUME assume
+    `else
+        `define ASSUME assert
+    `endif
+    integer past_valid_counter = 0;
+    wire past_valid = past_valid_counter > 2;
+    always @( posedge clk ) past_valid_counter <= (past_valid) ? past_valid_counter : past_valid_counter + 1;
+
+    // test this as a black box circuit.
+    // constrain the inputs
+    /*
+    input   wire                    uart_rxpin,     // input rx pin
+    input   wire [`UART_CONFIG_WIDTH-1:0] settings
+    output  reg [DATA_WIDTH-1:0]    dataout,        // output data, only valid after uart_rx_ready goes high
+    output  reg                     uart_rx_ready,  // dataout is valid on HIGH, duration 1 clk cycle
+    output  reg                     uart_rx_error,  // Transmission contained a parity error
+    output  wire                    uart_rx_busy,   // receiving transmission
+
+    */
+////////
+// ce //
+////////
+    integer ce_counter = 0;
+    wire    ce_valid = ce_counter >= LATENCY;
+    always @( posedge clk ) 
+        ce_counter <= (!past_valid || rst || ce) 
+                        ? 0 
+                        : ce_valid 
+                            ? ce_counter 
+                            : ce_counter + 1;
+    always @( posedge clk ) 
+        if( !past_valid || rst || ce_valid ) 
+            `ASSUME( !ce );
+//////////////
+// settings //
+//////////////
+    // ensure the settings are within a valid range
+    always @( posedge clk ) `ASSUME( settings[`UART_CONFIG_BITS_DELAYFRAMES] > 2);
+
+    // stop bits - no action required.
+
+    // parity bit
+    always @( posedge clk ) `ASSUME( settings[`UART_CONFIG_BITS_PARITY] != `UART_PARITY_UNUSED );
+
+    // data bits - a.k.a word width
+    always @( posedge clk ) `ASSUME( settings[`UART_CONFIG_BITS_DATABITS] >= 1 && settings[`UART_CONFIG_BITS_DATABITS] <= DATA_WIDTH);
+
+    // flow control - not used
+
+    // mode - not used
+
+    // generic receiver
+    // reg [DATA_WIDTH-1:0] received_data = 0;
+    // task automatic t_recv_uart_rx;
+    //     integer bit_number;
+    //     integer clock_number;
+    //     integer break_for_loop;
+    //     begin
+    //         #( 5 ) received_data = 2;
+    //         // for( break_for_loop = 1; break_for_loop; break_for_loop = break_for_loop ) begin
+    //         //     #( 10 ) received_data[bit_number] = uart_rxpin;
+    //         //     bit_number = bit_number + 1;
+    //         //     if( bit_number > UART_CONFIG_DATABITS )
+    //         //         break_for_loop = 0;
+    //         // end
+    //     end
+    // endtask
+
+    // always @( posedge clk ) assume( r_current_settings[`UART_CONFIG_BITS_DATABITS] == `UART_CONFIG_WIDTH_DATABITS'd8 );
+    // always @( posedge clk ) assume( r_current_settings[`UART_CONFIG_BITS_DELAYFRAMES] == `UART_CONFIG_WIDTH_DELAYFRAMES'd10 );
+    // always @( posedge clk ) begin
+    //     if( !uart_rxpin )
+    //         t_recv_uart_rx();
+    // end
+
+    // always @( posedge clk ) begin
+    //     if( uart_rx_ready )
+    //         assert( received_data == dataout );
+    // end
+`endif
 endmodule
