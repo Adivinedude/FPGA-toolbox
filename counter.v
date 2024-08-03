@@ -194,8 +194,7 @@ module counter_with_strobe
 // counter_ff & tick_counter  //
 // // // // // // // // // // //
     always @( posedge clk )
-        if( strobe_valid && !strobe )
-            `ASSUME($past(counter_ff) == tick_counter );        
+        `ASSUME(strobe || counter_ff == tick_counter + 1 );        
 // induction testing
 // using a 8 bit counter, need a test depth > 255 with enable forced high, 510 with enable toggling
 ///////////////////////////////////
