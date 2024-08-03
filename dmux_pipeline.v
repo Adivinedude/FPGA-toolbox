@@ -88,6 +88,7 @@ module dmux_lfmr #(
         // Testing values
         wire past_valid;
         reg unsigned [1:0] past_counter = 0;
+        initial assume( past_counter == 0 );
         assign past_valid = past_counter > 0;
         always @( posedge clk ) 
             past_counter <= (past_valid) 
@@ -112,7 +113,7 @@ module dmux_lfmr #(
 /////////
 // sel //
 /////////
-        always @(posedge clk) invalid_selection: `ASSUME( sel < OUTPUT_COUNT );
+        always @(posedge clk) invalid_selection: `ASSUME( !past_valid || sel < OUTPUT_COUNT );
 
         // ensure the simulation is working properly
         `ifdef FORMAL_DMUX_LFMR

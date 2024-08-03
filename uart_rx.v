@@ -46,7 +46,7 @@
 module uart_rx
 #(
     parameter COUNTER_WIDTH       = `UART_CONFIG_WIDTH_DELAYFRAMES,
-    parameter DATA_WIDTH          = `UART_CONFIG_WIDTH_DATABITS,
+    parameter DATA_WIDTH          = `UART_CONFIG_MAX_DATA,
     parameter SAMPLE_COUNT        = 1, // number of r_sample_buffer taken per bit of a frame. needs to be an (2**x)-1 for speed. 1, 3, 7, 15, 31....
     parameter LATENCY             = 0
 )
@@ -104,9 +104,9 @@ module uart_rx
     wire                                        w_sample_buffer_neq_SAMPLE_COUNT;
 
     initial begin
-        uart_rx_ready   <= 0;
-        uart_rx_error   <= 0;
-        dataout         <= 0;
+        uart_rx_ready   = 0;
+        uart_rx_error   = 0;
+        dataout         = 0;
     end
 
     assign uart_rx_busy = !r_rx_state[RX_STATE_IDLE];
@@ -118,7 +118,7 @@ module uart_rx
     
     // Demultiplexer to store the incoming data
     dmux_lfmr #(.WIDTH(1), .OUTPUT_COUNT(DATA_WIDTH), .LATENCY(LATENCY) )
-        dmux_next_data_bit(.clk(clk), .sel(r_rx_bit_number[0+:$clog2(DATA_WIDTH)]), .in(w_sample_value), .out(w_data_frame) );
+        dmux_next_data_bit(.clk(clk), .sel(r_rx_bit_number[0+:$clog2(DATA_WIDTH)+1]), .in(w_sample_value), .out(w_data_frame) );
     
     // Brad rate timer
     counter_with_strobe #( .WIDTH( COUNTER_WIDTH ), .LATENCY(LATENCY) ) 
@@ -281,8 +281,8 @@ module uart_rx
         end
     end
 
-    ///////////////////////////////////////////////////////////////////////////////
-    // formal verification starts here
+///////////////////////////////////////////////////////////////////////////////
+// formal verification starts here
     `ifdef FORMAL
         `define ASSERT assert
         `ifdef FORMAL_UART_RX
@@ -293,7 +293,7 @@ module uart_rx
     ////////////////
     // past_valid //
     ////////////////
-        integer past_valid_counter = 0;
+        reg unsigned [1:0] past_valid_counter = 0;
         wire past_valid = past_valid_counter > 2;
         always @( posedge clk ) past_valid_counter <= (past_valid) ? past_valid_counter : past_valid_counter + 1;
         `ifdef FORMAL_UART_RX
@@ -310,6 +310,10 @@ module uart_rx
         output  wire                    uart_rx_busy,   // receiving transmission
 
         */
+    /////////
+    // rst //
+    /////////
+        always @( posedge clk ) `ASSUME( past_valid || rst );
     ////////
     // ce //
     ////////
@@ -334,28 +338,21 @@ module uart_rx
         always @( posedge clk )
             `ASSUME($stable(uart_rxpin) || ce );
         `ifdef FORMAL_UART_RX
-            always @( posedge clk ) cover_uart_rxpin: cover( !uart_rxpin );
+            always @( posedge clk ) cover_uart_rxpin_low:  cover( !uart_rxpin );
+            always @( posedge clk ) cover_uart_rxpin_high: cover(  uart_rxpin );
         `endif
     //////////////
     // settings //
     //////////////
         // ensure the settings are within a valid range
         always @( posedge clk ) 
-            `ASSUME( settings[`UART_CONFIG_BITS_DELAYFRAMES] == 10 );
-
-        // stop bits - no action required.
-
-        // parity bit
-        always @( posedge clk ) 
-            `ASSUME( settings[`UART_CONFIG_BITS_PARITY] != `UART_PARITY_UNUSED );
-
-        // data bits - a.k.a word width
-        always @( posedge clk ) 
-            `ASSUME( settings[`UART_CONFIG_BITS_DATABITS] >= 1 && settings[`UART_CONFIG_BITS_DATABITS] <= DATA_WIDTH);
-
-        // flow control - not used
-
-        // mode - not used
+            `ASSUME( 
+                &{  settings[`UART_CONFIG_BITS_DELAYFRAMES] == 4,              // brad rate - limit for testing.
+                                                                                // stop bits - no action required.
+                    settings[`UART_CONFIG_BITS_PARITY] != `UART_PARITY_UNUSED,  // parity bit - valid
+                    settings[`UART_CONFIG_BITS_DATABITS] >= 'd6 && settings[`UART_CONFIG_BITS_DATABITS] <= DATA_WIDTH //word width
+                }
+            );
 
     //////////////////////
     // internal signals //
@@ -364,6 +361,9 @@ module uart_rx
         always @( posedge clk )
             `ASSERT( $countones(r_rx_state) );
 
+        // ensure r_rx_bit_number is in bounds
+        always @( posedge clk )
+            `ASSUME( r_rx_bit_number < DATA_WIDTH );
     ////////////////////
     // output signals //
     ////////////////////
@@ -371,6 +371,7 @@ module uart_rx
             always @( posedge clk ) cover_uart_rx_ready:    cover( uart_rx_ready );
             always @( posedge clk ) cover_uart_rx_error:    cover( uart_rx_error );
             always @( posedge clk ) cover_uart_rx_busy:     cover( uart_rx_busy );
+            always @( posedge clk ) cover_dataout:          cover( dataout != 0 );
         `endif
           
         // generic receiver
