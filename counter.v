@@ -91,7 +91,7 @@ module counter_with_strobe
 `ifdef TEST_BENCH_RUNNING
     // formal verification comparisons values
     integer past_valid_counter = 0;
-    wire    past_valid = past_valid_counter > 2;
+    wire    past_valid = past_valid_counter > 0;
     always @( posedge clk ) past_valid_counter <= past_valid ? past_valid_counter : past_valid_counter + 1;
 
     // 'ready' used to indicate when enable can be 'HIGH'
@@ -216,9 +216,10 @@ module counter_with_strobe
             $changed(strobe)    // strobe has changed to HIGH
         );
 // ensure I didn't break the design with assumptions.
-    always @( posedge clk ) cover( strobe );
-    always @( posedge clk ) cover( ready );
-    always @( posedge clk ) cover( valid );
-
+    `ifdef FORMAL_COUNTER_WITH_STROBE
+        always @( posedge clk ) cover( strobe );
+        always @( posedge clk ) cover( ready );
+        always @( posedge clk ) cover( valid );
+    `endif
 `endif
 endmodule

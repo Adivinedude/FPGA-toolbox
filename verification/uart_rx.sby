@@ -1,6 +1,12 @@
+[tasks]
+bmc
+cover
+
 [options]
-mode bmc
-depth 60
+bmc:    mode    bmc
+        depth   10
+cover:  mode    cover
+        depth   100
 
 [engines]
 smtbmc

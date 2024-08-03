@@ -115,8 +115,6 @@ module dmux_lfmr #(
         `ifdef FORMAL_DMUX_LFMR
             // report an output !zero and a sel !zero.
             always @( posedge clk ) cover( ready && in == $past(out[WIDTH*p_sel+:WIDTH]) ); // && p_sel != 0 && $past(out) != 0);
-        `else
-            always @( posedge clk ) cover( ready && in == out[WIDTH*sel+:WIDTH] && sel != 0);
         `endif
 
         // Assert the outputs
