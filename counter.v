@@ -149,14 +149,7 @@ module counter_with_strobe
         `define ASSUME assert
     `endif
 // Assume inputs
-// // // //
-// rst   //
-// // // //
-    // force the test to start in a reset state
-    always @( posedge clk ) begin : invalid_reset
-        if( !past_valid ) 
-            `ASSUME(rst);
-    end
+
 // // // // //
 // enable   //
 // // // // //
@@ -194,7 +187,7 @@ module counter_with_strobe
 // counter_ff & tick_counter  //
 // // // // // // // // // // //
     always @( posedge clk )
-        `ASSUME(strobe || counter_ff == tick_counter + 1 );        
+        assume(strobe || counter_ff == tick_counter + 1 );        
 // induction testing
 // using a 8 bit counter, need a test depth > 255 with enable forced high, 510 with enable toggling
 ///////////////////////////////////
