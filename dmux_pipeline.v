@@ -73,6 +73,10 @@ module dmux_lfmr #(
         dmux_object(.clk(clk), .sel(sel), .in(in), .in_pipeline(r_in_pipeline), .out(out), .out_pipeline(w_out_pipeline) );
     
     always @( posedge clk ) r_in_pipeline <= w_out_pipeline;
+
+///////////////////////////////////////////////////////////////////////////////
+// formal verification starts here
+
     `ifdef FORMAL
         `define ASSERT assert
         `ifdef FORMAL_DMUX_LFMR
@@ -83,50 +87,50 @@ module dmux_lfmr #(
 
         // Testing values
         wire past_valid;
-        integer past_counter = 0;
-        assign past_valid = past_counter >= LATENCY+1;
+        reg unsigned [1:0] past_counter = 0;
+        assign past_valid = past_counter > 0;
         always @( posedge clk ) 
             past_counter <= (past_valid) 
                                 ? past_counter 
                                 : past_counter + 1;
 
-        integer ready_tracker = 0;
-        wire ready = ready_tracker >= LATENCY+1;
+        reg unsigned [$clog2(LATENCY):0] valid_output_tracker = 0;
+        reg valid_output = 0;
         always @( posedge clk ) begin
             if( past_valid ) begin
-                ready_tracker <= $changed(sel) || $changed(in) 
+                valid_output_tracker = $changed(sel) || $changed(in) 
                                     ? 0 
-                                    : ready
-                                        ? ready_tracker
-                                        : ready_tracker + 1;
+                                    : valid_output
+                                        ? valid_output_tracker
+                                        : valid_output_tracker + 1;
+                valid_output = valid_output_tracker >= LATENCY;
+            end else begin
+                valid_output = 0;
             end
         end
         // Assume inputs
-        // keep 'sel' in a valid range
-        always @(posedge clk) `ASSUME( sel < OUTPUT_COUNT );
-
-        // only change 'sel' when pipeline if finished and output is valid
-        always @(posedge clk) `ASSUME( !past_valid || ready || $stable(sel) );
-
-        // only change 'in' when pipeline if finished and output is valid
-        always @(posedge clk) `ASSUME( !past_valid || ready || $stable(in) );
+/////////
+// sel //
+/////////
+        always @(posedge clk) invalid_selection: `ASSUME( sel < OUTPUT_COUNT );
 
         // ensure the simulation is working properly
         `ifdef FORMAL_DMUX_LFMR
             // report an output !zero and a sel !zero.
-            always @( posedge clk ) cover( ready && in == $past(out[WIDTH*p_sel+:WIDTH]) ); // && p_sel != 0 && $past(out) != 0);
+            always @( posedge clk ) cover( valid_output && in == out[WIDTH*sel+:WIDTH] );
         `endif
 
         // Assert the outputs
         // check of the output is correct when the pipeline is finished propagating.
-        reg [$clog2(OUTPUT_COUNT)-1:0]  p_sel;
-        always @(posedge clk) begin
+        reg [$clog2(OUTPUT_COUNT):0]    p_sel;
+        reg [WIDTH-1:0]                 p_in;
+        reg [(WIDTH*OUTPUT_COUNT)-1:0]  p_out;
+        always @( posedge clk ) begin
             p_sel <= sel;
-            if( past_valid ) begin
-                if( ready )
-                    assert( $past(in) == $past(out[WIDTH*p_sel+:WIDTH]) );
-            end
+            p_in  <= in;
+            p_out <= out;
         end
+        always @(posedge clk) dmux_valid_output: assert( !valid_output || p_in == p_out[WIDTH*p_sel+:WIDTH] );
     `endif
 
 endmodule
