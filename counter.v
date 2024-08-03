@@ -155,18 +155,14 @@ module counter_with_strobe
 // // // // //
     //force 'enable' to be LOW when '!ready' and no more than 2 ticks when 'ready'
     always @( posedge clk ) begin : invalid_enable
-        if( !past_valid )
-            `ASSUME(!enable);
-        else begin
-            if( !ready )
-                `ASSUME( !enable );
-            `ifdef FORMAL_COUNTER_WITH_STROBE
-                else begin
-                    if( enable_off_counter >= 3 )
-                        `ASSUME( enable );
-                end
-            `endif
-        end
+        if( !ready )
+            `ASSUME( !enable );
+        `ifdef FORMAL_COUNTER_WITH_STROBE
+            else begin
+                if( enable_off_counter >= 3 )
+                    `ASSUME( enable );
+            end
+        `endif
     end
 // // // // // //
 // reset_value //
