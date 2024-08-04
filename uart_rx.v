@@ -338,10 +338,11 @@ module uart_rx
         // ensure the settings are within a valid range
         always @( posedge clk ) 
             `ASSUME( 
-                &{  settings[`UART_CONFIG_BITS_DELAYFRAMES] == 4,              // brad rate - limit for testing.
+                &{  settings[`UART_CONFIG_BITS_DELAYFRAMES] >= 4,              // brad rate - limit for testing.
                                                                                 // stop bits - no action required.
                     settings[`UART_CONFIG_BITS_PARITY] != `UART_PARITY_UNUSED,  // parity bit - valid
-                    settings[`UART_CONFIG_BITS_DATABITS] >= 'd6 && settings[`UART_CONFIG_BITS_DATABITS] <= DATA_WIDTH //word width
+                    settings[`UART_CONFIG_BITS_DATABITS] >= 'd6 && settings[`UART_CONFIG_BITS_DATABITS] <= DATA_WIDTH, //word width
+                    $stable(settings) || rst
                 }
             );
 

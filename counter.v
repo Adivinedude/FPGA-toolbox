@@ -170,13 +170,13 @@ module counter_with_strobe
     // force the 'reset_value' to be greater than 1 and to stay stable when strobe is 1 tick from going 'HIGH'
     reg lock_reset_value = 0;
     always @( posedge clk ) begin //invalid_reset_value_change: 
-        if( strobe ) begin
+        if( strobe || rst ) begin
             lock_reset_value <= 0;
         end else begin
             if( tick_counter + 1 == reset_value )
                 lock_reset_value = 1;
         end
-        `ASSUME( rst || ( (reset_value > 1) && (lock_reset_value ? $stable(reset_value) : 1) ) );
+        `ASSUME( rst || ( (reset_value > 1) && ($past(lock_reset_value) ? $stable(reset_value) : 1) ) );
     end
 
 // // // // // // // // // // /
