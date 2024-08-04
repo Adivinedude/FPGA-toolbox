@@ -25,9 +25,9 @@ cover:  mode    cover
 
 c_l0_depth: depth 43
 c_l1_depth: depth 74
-c_l2_depth: depth 148
-c_l3_depth: depth 25
-c_l4_depth: depth 25
+c_l2_depth: depth 107
+c_l3_depth: depth 214
+c_l4_depth: depth 438
 
 p_depth_l0: depth 4
 p_depth_l1: depth 4
