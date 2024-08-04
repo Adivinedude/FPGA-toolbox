@@ -1,17 +1,33 @@
 [tasks]
-bmc
-cover
+bmc_l0 l0 bmc
+bmc_l1 l1 bmc
+bmc_l2 l2 bmc
+bmc_l3 l3 bmc
+bmc_l4 l4 bmc
+
+prove_l0 l0 prove
+prove_l1 l1 prove
+prove_l2 l2 prove
+prove_l3 l3 prove
+prove_l4 l4 prove
+
+cover_l0 l0 cover
+cover_l1 l1 cover
+cover_l2 l2 cover
+cover_l3 l3 cover
+cover_l4 l4 cover
 
 [options]
-bmc:
-mode    bmc
-depth   50
+bmc:    mode    bmc
+prove:  mode    prove
+cover:  mode    cover
 
-cover:
-mode    cover
-depth   100
+l0: depth 43
+l1: depth 86
+l2: depth 64
+l3: depth 80
+l4: depth 96
 
---
 [engines]
 smtbmc
 
@@ -23,6 +39,13 @@ read -formal math_pipelined.v
 read -formal counter.v
 read -formal dmux_pipeline.v
 read -formal uart_rx.v
+
+l0: hierarchy -check -top uart_rx -chparam LATENCY 0
+l1: hierarchy -check -top uart_rx -chparam LATENCY 1
+l2: hierarchy -check -top uart_rx -chparam LATENCY 2
+l3: hierarchy -check -top uart_rx -chparam LATENCY 3
+l4: hierarchy -check -top uart_rx -chparam LATENCY 4
+
 
 prep -top uart_rx
 

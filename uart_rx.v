@@ -294,8 +294,8 @@ module uart_rx
     // past_valid //
     ////////////////
         reg unsigned [1:0] past_valid_counter = 0;
-        wire past_valid = past_valid_counter > 2;
-        always @( posedge clk ) past_valid_counter <= (past_valid) ? past_valid_counter : past_valid_counter + 1;
+        wire past_valid = past_valid_counter > 0;
+        always @( posedge clk ) past_valid_counter = (past_valid) ? past_valid_counter : past_valid_counter + 1;
         `ifdef FORMAL_UART_RX
             always @( posedge clk ) cover_past_valid: cover( past_valid );
         `endif
@@ -317,10 +317,11 @@ module uart_rx
     ////////
     // ce //
     ////////
-        integer ce_counter = 0;
-        wire    ce_valid = (ce_counter >= LATENCY) && past_valid;
+        reg unsigned [$clog2(LATENCY):0] ce_counter = 0;
+        wire    ce_valid = (ce_counter >= LATENCY);
+
         always @( posedge clk ) begin
-            ce_counter <= (!past_valid || rst || ce) 
+            ce_counter = (!past_valid || rst || ce) 
                             ? 0 
                             : ce_valid 
                                 ? ce_counter 
@@ -359,7 +360,7 @@ module uart_rx
     //////////////////////
         // check FSM for invalid state
         always @( posedge clk )
-            `ASSERT( $countones(r_rx_state) );
+            `ASSERT( $countones(r_rx_state) == 1 );
 
         // ensure r_rx_bit_number is in bounds
         always @( posedge clk )

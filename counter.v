@@ -90,32 +90,32 @@ module counter_with_strobe
 
 `ifdef TEST_BENCH_RUNNING
     // formal verification comparisons values
-    integer past_valid_counter = 0;
+    reg unsigned [1:0] past_valid_counter = 0;
     wire    past_valid = past_valid_counter > 0;
-    always @( posedge clk ) past_valid_counter <= past_valid ? past_valid_counter : past_valid_counter + 1;
+    always @( posedge clk ) past_valid_counter = past_valid ? past_valid_counter : past_valid_counter + 1;
 
     // 'ready' used to indicate when enable can be 'HIGH'
     // 'valid' used to indicate when strobe may be 'HIGH'
     wire    ready;
     wire    valid;
 
-    reg [7:0]   ready_tracker   = 0;
+    reg unsigned [$clog2(LATENCY):0] ready_tracker   = 0;
     assign      ready           = LATENCY == 0 ? 1'b1 : ready_tracker >= LATENCY;
     reg         strobe_valid    = 0;
     assign      valid           = strobe_valid;
 
     always @( posedge clk ) begin
         if( rst ) begin
-            ready_tracker <= 'd0;
-            strobe_valid  <= 0;
+            ready_tracker = LATENCY;
+            strobe_valid  = 0;
         end else begin
             if( enable ) begin
-                ready_tracker <= 'd0;
+                ready_tracker = 'd0;
                 if( ready )
-                    strobe_valid <= 1'b1;
+                    strobe_valid = 1'b1;
             end else begin
-                ready_tracker <= ready ? ready_tracker : ready_tracker + 1;
-                strobe_valid  <= 0;
+                ready_tracker = ready ? ready_tracker : ready_tracker + 1;
+                strobe_valid  = 0;
             end
         end
     end
@@ -155,7 +155,7 @@ module counter_with_strobe
 // // // // //
     //force 'enable' to be LOW when '!ready' and no more than 2 ticks when 'ready'
     always @( posedge clk ) begin : invalid_enable
-        if( !ready )
+        if( !ready && past_valid && !$past(rst) )
             `ASSUME( !enable );
         `ifdef FORMAL_COUNTER_WITH_STROBE
             else begin
@@ -179,11 +179,12 @@ module counter_with_strobe
         `ASSUME( rst || ( (reset_value > 1) && (lock_reset_value ? $stable(reset_value) : 1) ) );
     end
 
-// // // // // // // // // // //
-// counter_ff & tick_counter  //
-// // // // // // // // // // //
+// // // // // // // // // // /
+// counter_ff & tick_counter  /
+// // // // // // // // // // /
     always @( posedge clk )
-        assume(strobe || counter_ff == tick_counter + 1 );        
+        assume(strobe || counter_ff == tick_counter + 1 );      
+
 // induction testing
 // using a 8 bit counter, need a test depth > 255 with enable forced high, 510 with enable toggling
 ///////////////////////////////////
