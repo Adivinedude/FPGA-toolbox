@@ -1,32 +1,39 @@
 [tasks]
-bmc_l0 l0 bmc
-bmc_l1 l1 bmc
-bmc_l2 l2 bmc
-bmc_l3 l3 bmc
-bmc_l4 l4 bmc
+# task mode depth latency
+bmc_l0 bmc c_l0_depth l0
+bmc_l1 bmc c_l1_depth l1
+bmc_l2 bmc c_l2_depth l2
+bmc_l3 bmc c_l3_depth l3
+bmc_l4 bmc c_l4_depth l4
 
-prove_l0 l0 prove
-prove_l1 l1 prove
-prove_l2 l2 prove
-prove_l3 l3 prove
-prove_l4 l4 prove
+prove_l0 prove p_depth_l0 l0
+prove_l1 prove p_depth_l1 l1
+prove_l2 prove p_depth_l2 l2
+prove_l3 prove p_depth_l3 l3
+prove_l4 prove p_depth_l4 l4
 
-cover_l0 l0 cover
-cover_l1 l1 cover
-cover_l2 l2 cover
-cover_l3 l3 cover
-cover_l4 l4 cover
+cover_l0 cover c_l0_depth l0
+cover_l1 cover c_l1_depth l1
+# cover_l2 cover c_l2_depth l2
+# cover_l3 cover c_l3_depth l3
+# cover_l4 cover c_l4_depth l4
 
 [options]
 bmc:    mode    bmc
 prove:  mode    prove
 cover:  mode    cover
 
-l0: depth 43
-l1: depth 86
-l2: depth 64
-l3: depth 80
-l4: depth 96
+c_l0_depth: depth 43
+c_l1_depth: depth 74
+c_l2_depth: depth 25
+c_l3_depth: depth 25
+c_l4_depth: depth 25
+
+p_depth_l0: depth 4
+p_depth_l1: depth 4
+p_depth_l2: depth 4
+p_depth_l3: depth 5
+p_depth_l4: depth 7
 
 [engines]
 smtbmc

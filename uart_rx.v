@@ -296,9 +296,6 @@ module uart_rx
         reg unsigned [1:0] past_valid_counter = 0;
         wire past_valid = past_valid_counter > 0;
         always @( posedge clk ) past_valid_counter = (past_valid) ? past_valid_counter : past_valid_counter + 1;
-        `ifdef FORMAL_UART_RX
-            always @( posedge clk ) cover_past_valid: cover( past_valid );
-        `endif
         // test this as a black box circuit.
         // constrain the inputs
         /*
@@ -330,18 +327,11 @@ module uart_rx
                 `ASSUME( !ce );
         end
 
-        `ifdef FORMAL_UART_RX
-            always @( posedge clk ) cover_ce: cover( ce );
-        `endif
     ////////////////
     // uart_rxpin //
     ////////////////
         always @( posedge clk )
             `ASSUME($stable(uart_rxpin) || ce );
-        `ifdef FORMAL_UART_RX
-            always @( posedge clk ) cover_uart_rxpin_low:  cover( !uart_rxpin );
-            always @( posedge clk ) cover_uart_rxpin_high: cover(  uart_rxpin );
-        `endif
     //////////////
     // settings //
     //////////////
@@ -365,10 +355,14 @@ module uart_rx
         // ensure r_rx_bit_number is in bounds
         always @( posedge clk )
             `ASSUME( r_rx_bit_number < DATA_WIDTH );
-    ////////////////////
-    // output signals //
-    ////////////////////
+    ///////////////////////
+    // cover all signals //
+    ///////////////////////
         `ifdef FORMAL_UART_RX
+            always @( posedge clk ) cover_past_valid:       cover( past_valid );
+            always @( posedge clk ) cover_ce:               cover( ce );
+            always @( posedge clk ) cover_uart_rxpin_low:   cover( !uart_rxpin );
+            always @( posedge clk ) cover_uart_rxpin_high:  cover(  uart_rxpin );
             always @( posedge clk ) cover_uart_rx_ready:    cover( uart_rx_ready );
             always @( posedge clk ) cover_uart_rx_error:    cover( uart_rx_error );
             always @( posedge clk ) cover_uart_rx_busy:     cover( uart_rx_busy );
