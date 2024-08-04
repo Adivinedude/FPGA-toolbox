@@ -14,7 +14,7 @@ prove_l4 prove p_depth_l4 l4
 
 cover_l0 cover c_l0_depth l0
 cover_l1 cover c_l1_depth l1
-# cover_l2 cover c_l2_depth l2
+cover_l2 cover c_l2_depth l2
 # cover_l3 cover c_l3_depth l3
 # cover_l4 cover c_l4_depth l4
 
@@ -25,7 +25,7 @@ cover:  mode    cover
 
 c_l0_depth: depth 43
 c_l1_depth: depth 74
-c_l2_depth: depth 25
+c_l2_depth: depth 148
 c_l3_depth: depth 25
 c_l4_depth: depth 25
 
@@ -33,7 +33,7 @@ p_depth_l0: depth 4
 p_depth_l1: depth 4
 p_depth_l2: depth 4
 p_depth_l3: depth 5
-p_depth_l4: depth 7
+p_depth_l4: depth 25
 
 [engines]
 smtbmc
