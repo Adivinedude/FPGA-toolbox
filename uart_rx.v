@@ -297,16 +297,6 @@ module uart_rx
         wire past_valid = past_valid_counter > 0;
         always @( posedge clk ) past_valid_counter = (past_valid) ? past_valid_counter : past_valid_counter + 1;
         // test this as a black box circuit.
-        // constrain the inputs
-        /*
-        input   wire                    uart_rxpin,     // input rx pin
-        input   wire [`UART_CONFIG_WIDTH-1:0] settings
-        output  reg [DATA_WIDTH-1:0]    dataout,        // output data, only valid after uart_rx_ready goes high
-        output  reg                     uart_rx_ready,  // dataout is valid on HIGH, duration 1 clk cycle
-        output  reg                     uart_rx_error,  // Transmission contained a parity error
-        output  wire                    uart_rx_busy,   // receiving transmission
-
-        */
     /////////
     // rst //
     /////////

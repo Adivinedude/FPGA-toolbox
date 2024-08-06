@@ -84,24 +84,29 @@ module mux_lfmr #(
 
         // Testing values
         wire past_valid;
-        integer past_counter = 0;
-        assign past_valid = past_counter >= LATENCY;
+        reg unsigned [1:0] past_counter = 0;
+        initial assume( past_counter == 0 );
+        assign past_valid = past_counter > 0;
         always @( posedge clk ) 
             past_counter <= (past_valid) 
                                 ? past_counter 
                                 : past_counter + 1;
 
-        integer ready_tracker = 0;
-        wire ready = ready_tracker >= LATENCY+1;
+        reg unsigned [$clog2(LATENCY):0] valid_output_tracker = 0;
+        reg valid_output = 0;
         always @( posedge clk ) begin
             if( past_valid ) begin
-                ready_tracker <= $changed(sel) || $changed(in) 
+                valid_output_tracker = $changed(sel) || $changed(in) 
                                     ? 0 
-                                    : ready
-                                        ? ready_tracker
-                                        : ready_tracker + 1;
+                                    : valid_output
+                                        ? valid_output_tracker
+                                        : valid_output_tracker + 1;
+                valid_output = valid_output_tracker >= LATENCY;
+            end else begin
+                valid_output = 0;
             end
         end
+
 
         reg [$clog2(INPUT_COUNT)-1:0]   p_sel;
         reg [(WIDTH*INPUT_COUNT)-1:0]   p_in;
@@ -114,31 +119,27 @@ module mux_lfmr #(
 
         // Assume inputs
         // keep 'sel' in a valid range
-        always @(posedge clk) `ASSUME( sel < INPUT_COUNT );
+        always @(posedge clk) `ASSUME( !past_valid || sel < INPUT_COUNT );
 
-        // only change 'sel' when pipeline if finished and output is valid
-        always @(posedge clk) `ASSUME( !past_valid || ready || $stable(sel) );
+        `ifdef FORMAL_MUX_LFMR
+            // only change 'sel' when pipeline if finished and output is valid
+            always @(posedge clk) `ASSUME( !past_valid || valid_output || $stable(sel) );
 
-        // only change 'in' when pipeline if finished and output is valid
-        always @(posedge clk) `ASSUME( !past_valid || ready || $stable(in) );
+            // only change 'in' when pipeline if finished and output is valid
+            always @(posedge clk) `ASSUME( !past_valid || valid_output || $stable(in) );
 
         // ensure the simulation is working properly
-        `ifdef FORMAL_MUX_LFMR
             // report an output !zero and a sel !zero.
-            always @( posedge clk ) cover( ready && p_in[WIDTH*p_sel+:WIDTH] == $past(out) && p_sel != 0 && $past(out) != 0);
+            always @( posedge clk ) cover( valid_output && p_in[WIDTH*p_sel+:WIDTH] == $past(out) && p_sel != 0 && $past(out) != 0);
         `else
-            always @( posedge clk ) cover( ready && in[WIDTH*sel+:WIDTH] == out && sel != 0);
+            always @( posedge clk ) cover( valid_output && in[WIDTH*sel+:WIDTH] == out && sel != 0);
         `endif
 
         // Assert the outputs
         // check of the output is correct when the pipeline is finished propagating.
-        always @(posedge clk) begin
-            if( past_valid ) begin
-                if( ready )
-                    assert( p_in[WIDTH*p_sel+:WIDTH] == $past(out) );
-            end
-        end
+        always @(posedge clk) assert( !valid_output || p_in[WIDTH*p_sel+:WIDTH] == $past(out) );
     `endif
+
 endmodule
 
 module mux_combinational #(

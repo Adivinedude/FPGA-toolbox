@@ -192,5 +192,84 @@ module uart_tx
                 r_current_settings[`UART_CONFIG_BITS_DATABITS] 
                     <= { {`UART_CONFIG_WIDTH_DATABITS - `UART_CONFIG_WIDTH_STOPBITS{1'b0}}, UART_CONFIG_STOPBITS};
         endcase
-    end    
+    end  
+
+ ///////////////////////////////////////////////////////////////////////////////
+// formal verification starts here
+    `ifdef FORMAL
+        `define ASSERT assert
+        `ifdef FORMAL_UART_TX
+            `define ASSUME assume
+        `else
+            `define ASSUME assert
+        `endif
+    ////////////////
+    // past_valid //
+    ////////////////
+        reg unsigned [1:0] past_valid_counter = 0;
+        wire past_valid = past_valid_counter > 0;
+        always @( posedge clk ) past_valid_counter = (past_valid) ? past_valid_counter : past_valid_counter + 1;
+        // test this as a black box circuit.
+    /////////
+    // rst //
+    /////////
+        always @( posedge clk ) `ASSUME( past_valid || rst );
+    ////////
+    // ce //
+    ////////
+        reg unsigned [$clog2(LATENCY):0] ce_counter = 0;
+        wire    ce_valid = (ce_counter >= LATENCY);
+
+        always @( posedge clk ) begin
+            ce_counter = (!past_valid || rst || ce) 
+                            ? 0 
+                            : ce_valid 
+                                ? ce_counter 
+                                : ce_counter + 1;
+            if( !ce_valid ) 
+                `ASSUME( !ce );
+        end
+
+    ////////////////
+    // uart_txpin //
+    ////////////////
+        // always @( posedge clk )
+        //     `ASSUME($stable(uart_txpin) || ce );
+    //////////////
+    // settings //
+    //////////////
+        // ensure the settings are within a valid range
+        always @( posedge clk ) 
+            `ASSUME( 
+                &{  settings[`UART_CONFIG_BITS_DELAYFRAMES] >= 4,              // brad rate - limit for testing.
+                                                                                // stop bits - no action required.
+                    settings[`UART_CONFIG_BITS_PARITY] != `UART_PARITY_UNUSED,  // parity bit - valid
+                    settings[`UART_CONFIG_BITS_DATABITS] >= 'd6 && settings[`UART_CONFIG_BITS_DATABITS] <= DATA_WIDTH, //word width
+                    $stable(settings) || rst
+                }
+            );
+    //////////////////////
+    // internal signals //
+    //////////////////////
+        // check FSM for invalid state
+        always @( posedge clk )
+            `ASSERT( r_tx_state < TX_NUMBER_OF_STATES );
+
+        // ensure r_rx_bit_number is in bounds
+        always @( posedge clk )
+            `ASSUME( r_tx_bit_number < DATA_WIDTH );
+   
+    ///////////////////////
+    // cover all signals //
+    ///////////////////////
+        `ifdef FORMAL_UART_TX
+            always @( posedge clk ) cover_past_valid:       cover( past_valid );
+            always @( posedge clk ) cover_ce:               cover( ce );
+            always @( posedge clk ) cover_tx_ready_high:    cover(  uart_tx_ready );
+            always @( posedge clk ) cover_tx_ready_low:     cover( !uart_tx_ready );
+            always @( posedge clk ) cover_uart_txpin_low:   cover( !uart_txpin );
+            always @( posedge clk ) cover_uart_txpin_high:  cover(  uart_txpin );
+            always @( posedge clk ) cover_uart_tx_busy:     cover(  uart_tx_busy );
+        `endif
+`endif
 endmodule
