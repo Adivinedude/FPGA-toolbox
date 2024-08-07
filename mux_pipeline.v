@@ -1,4 +1,4 @@
-////////////////////////////////////////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////////////////
 //
 // Filename:	mux_pipeline.v
 //
@@ -7,7 +7,7 @@
 //
 // Creator:	Ronald Rainwater
 // Data: 2024-7-10
-////////////////////////////////////////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////////////////
 // Copyright (C) 2024, Ronald Rainwater
 //
 // This program is free software (firmware): you can redistribute it and/or
@@ -24,9 +24,80 @@
 // with this program. If not, see <http://www.gnu.org/licenses/> for a copy.
 // License:	GPL, v3, as defined and found on www.gnu.org,
 //		http://www.gnu.org/licenses/gpl.html
-////////////////////////////////////////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////////////////
 
+///////////////////////////////////////////////////////////////////////////////
+// Content:
+//  mux_combinational   - All the combinational logic required to generate a 
+//                          variable with and latency mux pipeline
+//  mux_lfmr            - A pipelined mux which backfeeds into a single vector
+//                          object. Providing high FMAX, with low throughput
+//                          and moderate area.
+//  mux_pipeline        - A fully pipelined mux which produces high FMAX with
+//                          full throughput and high area.
 `default_nettype none
+module mux_pipeline #(
+    parameter WIDTH = 1,
+    parameter INPUT_COUNT = 2,
+    parameter LATENCY = 0,
+    parameter PRINT = 0
+)( clk, sel, in, out );
+    input   wire                                clk;
+    input   wire    [$clog2(INPUT_COUNT):0]     sel;
+    input   wire    [(WIDTH*INPUT_COUNT)-1:0]   in;
+    output  wire    [WIDTH-1:0]                 out;
+    
+    `include "recursion_iterators.vh"
+
+    localparam MUX_SIZE         = 'd1 << $clog2(f_NaryRecursionGetUnitWidthForLatency(INPUT_COUNT, LATENCY));
+    localparam SEL_WIDTH        = $clog2(MUX_SIZE);
+    localparam STRUCTURE_SIZE   = f_NaryRecursionGetVectorSize( INPUT_COUNT, MUX_SIZE );
+    localparam STRUCTURE_DEPTH  = f_NaryRecursionGetDepth(INPUT_COUNT, MUX_SIZE);
+    reg     [(STRUCTURE_SIZE*WIDTH)-1:0]    r_in_pipeline;
+    wire    [(STRUCTURE_SIZE*WIDTH)-1:0]    w_out_pipeline;
+    
+    // pipeline the 'sel' input
+    function automatic integer f_select_register_size;
+        input integer structure_depth;
+        begin : named_block
+        integer total_size;
+            total_size              = $clog2(INPUT_COUNT);
+            f_select_register_size  = 0;
+            for( structure_depth = structure_depth; structure_depth > 0; structure_depth = structure_depth - 1) begin
+                total_size = total_size - SEL_WIDTH;
+                f_select_register_size = f_select_register_size + total_size;
+            end
+        end
+    endfunction
+    reg     [f_select_register_size(STRUCTURE_DEPTH)-1:0] r_sel = 0;
+    wire    [$clog2(INPUT_COUNT):0]         w_sel;    
+    generate
+        // 2 1 0
+        // 4 3
+        // 5
+        genvar idx;
+            assign w_sel[0+:SEL_WIDTH] = sel[0+:SEL_WIDTH];
+            for( idx = 1; idx < STRUCTURE_DEPTH; idx = idx + 1 )begin
+                initial $display( "idx:%1d rt:%1d", idx, f_select_register_size(idx-1));
+                assign w_sel[idx*SEL_WIDTH+:SEL_WIDTH] = r_sel[idx*f_select_register_size(idx-1)+:SEL_WIDTH];
+                always @( posedge clk ) r_sel[(idx-1)*SEL_WIDTH+:SEL_WIDTH] <= 
+            end
+    endgenerate
+
+    integer test_value = 0;
+    initial test_value = f_select_register_size(STRUCTURE_DEPTH);
+    initial $display( "test_value:%1d", test_value);
+    always @( posedge clk ) begin
+
+    end
+
+    mux_combinational #(.WIDTH(WIDTH), .INPUT_COUNT(INPUT_COUNT), .LATENCY(LATENCY), .TYPE(0), .PRINT(PRINT) )
+        mux_object(.clk(clk), .sel(sel), .in(in), .in_pipeline(r_in_pipeline), .out(out), .out_pipeline(w_out_pipeline) );
+    
+    always @( posedge clk ) r_in_pipeline <= w_out_pipeline;
+
+
+endmodule
 
 module mux_lfmr #(
     parameter WIDTH = 1,
