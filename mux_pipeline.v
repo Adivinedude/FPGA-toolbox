@@ -32,20 +32,17 @@
 //                          variable with and latency mux pipeline
 //  mux_lfmr            - A pipelined mux which backfeeds into a single vector
 //                          object. Providing high FMAX, with low throughput
-//                          and moderate area.
 //  mux_pipeline        - A fully pipelined mux which produces high FMAX with
-//                          full throughput and high area.
+//                          full throughput
 `default_nettype none
-
-`define SIZE_TO_VECTOR_WIDTH(SIZE) (2**$clog2(SIZE) < SIZE) ? $clog2(SIZE)+1 : $clog2(SIZE)
 
 module mux_pipeline #(
     parameter WIDTH = 1,
-    parameter INPUT_COUNT = 2,
-    parameter LATENCY = 0,
+    parameter INPUT_COUNT = 3,
+    parameter LATENCY = 1,
     parameter PRINT = 0
 )( clk, sel, in, out );
-    localparam SELECT_SIZE = `SIZE_TO_VECTOR_WIDTH(INPUT_COUNT);
+    localparam SELECT_SIZE = $clog2(INPUT_COUNT);
 
     input   wire                                clk;
     input   wire    [SELECT_SIZE-1:0]           sel;
@@ -77,12 +74,14 @@ module mux_pipeline #(
 
     reg     [PIPELINE_R_SIZE-1:0]               r_sel = 0;    // .sel() pipeline register
     wire    [SELECT_SIZE-1:0]                   w_sel;        // wires to pass to combinational .sel()
-    wire    [SELECT_SIZE + PIPELINE_R_SIZE -1:0]w_sel_in_pipe = { r_sel, sel };
+    wire    [SELECT_SIZE+PIPELINE_R_SIZE-1:0]   w_sel_in_pipe = { r_sel, sel };
+    if(PRINT!=0)initial $display("mux_pipeline - SELECT_SIZE:%1d MUX_SIZE:%1d SEL_WIDTH:%1d STRUCTURE_SIZE:%1d STRUCTURE_DEPTH:%1d PIPELINE_R_SIZE:%1d",
+        SELECT_SIZE, MUX_SIZE, SEL_WIDTH, STRUCTURE_SIZE, STRUCTURE_DEPTH, PIPELINE_R_SIZE );
     generate
         genvar idx;
             // perform w_sel assignment
             for( idx = 0; idx < STRUCTURE_DEPTH; idx = idx + 1 )begin
-                initial $display( "idx:%1d w_sel[%1d+:%1d] = w_sel_in_pipe[%1d+:%1d]", 
+                if(PRINT!=0)initial $display( "mux_pipeline - idx:%1d w_sel[%1d+:%1d] = w_sel_in_pipe[%1d+:%1d]", 
                     idx,
                     idx*SEL_WIDTH, 
                         SEL_WIDTH,
@@ -101,7 +100,7 @@ module mux_pipeline #(
               // 3- 9           // 5
     //  w_sel //    9 7 4 0     // 5 3 0 x
             for( idx = 0; idx < STRUCTURE_DEPTH-1; idx = idx + 1 )begin
-                initial $display( "idx:%1d r_sel[%1d+:%1d] <= w_sel_in_pipe[%1d+:%1d]"/**/ ,
+                if(PRINT!=0)initial $display( "mux_pipeline - idx:%1d r_sel[%1d+:%1d] <= w_sel_in_pipe[%1d+:%1d]"/**/ ,
                     idx,
                     f_select_register_size(idx), 
                         f_select_register_size(idx+1)-f_select_register_size(idx),
@@ -129,7 +128,7 @@ module mux_lfmr #(
     parameter PRINT = 0
 )( clk, sel, in, out );
     input   wire                                clk;
-    input   wire    [`SIZE_TO_VECTOR_WIDTH(INPUT_COUNT)-1:0] sel;
+    input   wire    [$clog2(INPUT_COUNT)-1:0]   sel;
     input   wire    [(WIDTH*INPUT_COUNT)-1:0]   in;
     output  wire    [WIDTH-1:0]                 out;
     
@@ -141,9 +140,9 @@ module mux_lfmr #(
             case(TYPE)
                 default:    f_GetMuxSize = f_NaryRecursionGetUnitWidthForLatency(INPUT_COUNT, LATENCY);
             endcase
-            if(PRINT!=0)$write("f_GetMuxSize: LATENCY:%0d\tINPUT_COUNT:%0d \f_NaryRecursionGetUnitWidthForLatency:%0d\t",LATENCY, INPUT_COUNT, f_GetMuxSize );
+            if(PRINT!=0)$write("mux_lfmr - f_GetMuxSize: LATENCY:%0d\tINPUT_COUNT:%0d \f_NaryRecursionGetUnitWidthForLatency:%0d\t",LATENCY, INPUT_COUNT, f_GetMuxSize );
             f_GetMuxSize = 'd1 << $clog2(f_GetMuxSize);
-            if(PRINT!=0)$display("f_GetMuxSize:%0d", f_GetMuxSize);
+            if(PRINT!=0)$display("mux_lfmr - f_GetMuxSize:%0d", f_GetMuxSize);
         end
     endfunction
     localparam MUX_SIZE = f_GetMuxSize(0);
@@ -245,7 +244,7 @@ module mux_combinational #(
     parameter PRINT = 0
 )( clk, sel, in, in_pipeline, out, out_pipeline );
     input   wire                                clk;
-    input   wire    [`SIZE_TO_VECTOR_WIDTH(INPUT_COUNT)-1:0] sel;
+    input   wire    [$clog2(INPUT_COUNT)-1:0]   sel;
     input   wire    [(WIDTH*INPUT_COUNT)-1:0]   in;
     output  wire    [WIDTH-1:0]                 out;
 
@@ -254,7 +253,7 @@ module mux_combinational #(
         input unused;
         begin
             case(TYPE)
-                default:    f_GetMuxSize = f_NaryRecursionGetUnitWidthForLatency(INPUT_COUNT, LATENCY);
+                default:    f_GetMuxSize = f_NaryRecursionGetUnitWidthForLatency(INPUT_COUNT, LATENCY); // BUG. for input_count 3 LATENCY 1 - returns incorrect value. rt is 4four. should be 2two
             endcase
             f_GetMuxSize = 'd1 << $clog2(f_GetMuxSize);
         end
@@ -319,7 +318,7 @@ module mux_combinational #(
     wire    [((INPUT_COUNT+STRUCTURE_SIZE-1)*WIDTH)-1:0]  w_input_chain;
     assign w_input_chain = {in_pipeline,in};
     generate
-        initial if(PRINT!=0)$display("INPUT_COUNT:%0d MUX_SIZE:%0d STRUCTURE_TYPE:%0d STRUCTURE_SIZE:%0d STRUCTURE_DEPTH:%0d SEL_WIDTH:%0d", INPUT_COUNT, MUX_SIZE, TYPE, STRUCTURE_SIZE, STRUCTURE_DEPTH, SEL_WIDTH);
+        initial if(PRINT!=0)$display("mux_combinational - INPUT_COUNT:%0d MUX_SIZE:%0d STRUCTURE_TYPE:%0d STRUCTURE_SIZE:%0d STRUCTURE_DEPTH:%0d SEL_WIDTH:%0d", INPUT_COUNT, MUX_SIZE, TYPE, STRUCTURE_SIZE, STRUCTURE_DEPTH, SEL_WIDTH);
         genvar unit_index, input_index;
         for( unit_index = 0; unit_index < TOTAL_UNIT_COUNT; unit_index = unit_index + 1) begin : mux_unit_loop
             if( f_GetUnitOutputAddress(unit_index) != ~0 ) begin
@@ -329,7 +328,7 @@ module mux_combinational #(
                     if( input_index < f_GetUnitWidth(unit_index) ) begin
                         initial if(PRINT!=0)$write(" (II:%2d A:%2d)", input_index, f_GetInputAddress(unit_index, input_index) );
                         assign unit_inputs[WIDTH*input_index+:WIDTH] = w_input_chain[f_GetInputAddress(unit_index, input_index)*WIDTH+:WIDTH];
-                    end else 
+                    end else // Todo rewrite this if/else block to remove the below line and not infer a latch
                         assign unit_inputs[WIDTH*input_index+:WIDTH] = {WIDTH{1'b0}};
                 end
                 // select the units output.
