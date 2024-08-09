@@ -36,14 +36,19 @@
 //  mux_pipeline        - A fully pipelined mux which produces high FMAX with
 //                          full throughput and high area.
 `default_nettype none
+
+`define SIZE_TO_VECTOR_WIDTH(SIZE) (2**$clog2(SIZE) < SIZE) ? $clog2(SIZE)+1 : $clog2(SIZE)
+
 module mux_pipeline #(
     parameter WIDTH = 1,
     parameter INPUT_COUNT = 2,
     parameter LATENCY = 0,
     parameter PRINT = 0
 )( clk, sel, in, out );
+    localparam SELECT_SIZE = `SIZE_TO_VECTOR_WIDTH(INPUT_COUNT);
+
     input   wire                                clk;
-    input   wire    [$clog2(INPUT_COUNT):0]     sel;
+    input   wire    [SELECT_SIZE-1:0]           sel;
     input   wire    [(WIDTH*INPUT_COUNT)-1:0]   in;
     output  wire    [WIDTH-1:0]                 out;
     
@@ -53,8 +58,6 @@ module mux_pipeline #(
     localparam SEL_WIDTH        = $clog2(MUX_SIZE);
     localparam STRUCTURE_SIZE   = f_NaryRecursionGetVectorSize( INPUT_COUNT, MUX_SIZE );
     localparam STRUCTURE_DEPTH  = f_NaryRecursionGetDepth(INPUT_COUNT, MUX_SIZE);
-    reg     [(STRUCTURE_SIZE*WIDTH)-1:0]    r_in_pipeline;
-    wire    [(STRUCTURE_SIZE*WIDTH)-1:0]    w_out_pipeline;
     
     // pipeline the 'sel' input
     function automatic integer f_select_register_size;
@@ -69,34 +72,53 @@ module mux_pipeline #(
             end
         end
     endfunction
-    reg     [f_select_register_size(STRUCTURE_DEPTH)-1:0] r_sel = 0;
-    wire    [$clog2(INPUT_COUNT):0]         w_sel;    
+
+    localparam PIPELINE_R_SIZE = f_select_register_size(STRUCTURE_DEPTH);
+
+    reg     [PIPELINE_R_SIZE-1:0]               r_sel = 0;    // .sel() pipeline register
+    wire    [SELECT_SIZE-1:0]                   w_sel;        // wires to pass to combinational .sel()
+    wire    [SELECT_SIZE + PIPELINE_R_SIZE -1:0]w_sel_in_pipe = { r_sel, sel };
     generate
-        // 2 1 0
-        // 4 3
-        // 5
         genvar idx;
-            assign w_sel[0+:SEL_WIDTH] = sel[0+:SEL_WIDTH];
-            for( idx = 1; idx < STRUCTURE_DEPTH; idx = idx + 1 )begin
-                initial $display( "idx:%1d rt:%1d", idx, f_select_register_size(idx-1));
-                assign w_sel[idx*SEL_WIDTH+:SEL_WIDTH] = r_sel[idx*f_select_register_size(idx-1)+:SEL_WIDTH];
-                always @( posedge clk ) r_sel[(idx-1)*SEL_WIDTH+:SEL_WIDTH] <= 
+            // perform w_sel assignment
+            for( idx = 0; idx < STRUCTURE_DEPTH; idx = idx + 1 )begin
+                initial $display( "idx:%1d w_sel[%1d+:%1d] = w_sel_in_pipe[%1d+:%1d]", 
+                    idx,
+                    idx*SEL_WIDTH, 
+                        SEL_WIDTH,
+                    (idx==0)?0:f_select_register_size(idx-1)+SELECT_SIZE, 
+                        SEL_WIDTH 
+                );
+                assign w_sel[idx*SEL_WIDTH+:SEL_WIDTH] 
+                    = w_sel_in_pipe[
+                        (idx==0)?0:f_select_register_size(idx-1)+SELECT_SIZE
+                        +:SEL_WIDTH ];                  
+            end
+    //////////// { r_sel, sel }    { r_sel }
+    //    sel // 0- 3 2 1 0     // 
+    //  r_sel // 1- 6 5 4       // 2 1 0
+              // 2- 8 7         // 4 3
+              // 3- 9           // 5
+    //  w_sel //    9 7 4 0     // 5 3 0 x
+            for( idx = 0; idx < STRUCTURE_DEPTH-1; idx = idx + 1 )begin
+                initial $display( "idx:%1d r_sel[%1d+:%1d] <= w_sel_in_pipe[%1d+:%1d]"/**/ ,
+                    idx,
+                    f_select_register_size(idx), 
+                        f_select_register_size(idx+1)-f_select_register_size(idx),
+                    (idx==0)?SEL_WIDTH:f_select_register_size(idx-1)+SELECT_SIZE+1,
+                        f_select_register_size(idx+1)-f_select_register_size(idx)
+                );
+                always @( posedge clk ) 
+                    r_sel[ f_select_register_size(idx) 
+                        +: f_select_register_size(idx+1)-f_select_register_size(idx) ]
+                    <= w_sel_in_pipe[ (idx==0)?SEL_WIDTH:f_select_register_size(idx-1)+SELECT_SIZE+1 
+                        +: f_select_register_size(idx+1)-f_select_register_size(idx) ];
             end
     endgenerate
 
-    integer test_value = 0;
-    initial test_value = f_select_register_size(STRUCTURE_DEPTH);
-    initial $display( "test_value:%1d", test_value);
-    always @( posedge clk ) begin
-
-    end
-
-    mux_combinational #(.WIDTH(WIDTH), .INPUT_COUNT(INPUT_COUNT), .LATENCY(LATENCY), .TYPE(0), .PRINT(PRINT) )
-        mux_object(.clk(clk), .sel(sel), .in(in), .in_pipeline(r_in_pipeline), .out(out), .out_pipeline(w_out_pipeline) );
+    mux_lfmr #(.WIDTH(WIDTH), .INPUT_COUNT(INPUT_COUNT), .LATENCY(LATENCY), .TYPE(0), .PRINT(PRINT) )
+        mux_object(.clk(clk), .sel(w_sel), .in(in), .out(out) );
     
-    always @( posedge clk ) r_in_pipeline <= w_out_pipeline;
-
-
 endmodule
 
 module mux_lfmr #(
@@ -107,7 +129,7 @@ module mux_lfmr #(
     parameter PRINT = 0
 )( clk, sel, in, out );
     input   wire                                clk;
-    input   wire    [$clog2(INPUT_COUNT):0]     sel;
+    input   wire    [`SIZE_TO_VECTOR_WIDTH(INPUT_COUNT)-1:0] sel;
     input   wire    [(WIDTH*INPUT_COUNT)-1:0]   in;
     output  wire    [WIDTH-1:0]                 out;
     
@@ -223,7 +245,7 @@ module mux_combinational #(
     parameter PRINT = 0
 )( clk, sel, in, in_pipeline, out, out_pipeline );
     input   wire                                clk;
-    input   wire    [$clog2(INPUT_COUNT):0]     sel;
+    input   wire    [`SIZE_TO_VECTOR_WIDTH(INPUT_COUNT)-1:0] sel;
     input   wire    [(WIDTH*INPUT_COUNT)-1:0]   in;
     output  wire    [WIDTH-1:0]                 out;
 
