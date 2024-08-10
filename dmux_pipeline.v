@@ -94,7 +94,7 @@ module dmux_pipeline #(
                         +:SEL_WIDTH ];                  
             end
     // [x] step one reverse .sel() order
-    // [ ] step two reverse w_sel order
+    // [x] step two reverse w_sel order
     //////////// { r_sel, sel }    { r_sel }
     //    sel // 0- 3 2 1 0     // 
     //  r_sel // 1- 6 5 4       // 2 1 0
@@ -118,7 +118,7 @@ module dmux_pipeline #(
     endgenerate
 
     dmux_lfmr #(.WIDTH(WIDTH), .OUTPUT_COUNT(OUTPUT_COUNT), .LATENCY(LATENCY), .TYPE(0), .PRINT(PRINT) )
-        mux_object(.clk(clk), .sel(w_sel_reverse), .in(in), .out(out) );
+        object_dmux_lfmr(.clk(clk), .sel(w_sel_reverse), .in(in), .out(out) );
     
 endmodule
 
@@ -131,7 +131,7 @@ module dmux_lfmr #(
 )( clk, sel, in, out );
     
     input   wire                                clk;
-    input   wire    [$clog2(OUTPUT_COUNT)-1:0] sel;
+    input   wire    [$clog2(OUTPUT_COUNT)-1:0]  sel;
     input   wire    [WIDTH-1:0]                 in;
     output  wire    [(WIDTH*OUTPUT_COUNT)-1:0]  out;
     `include "recursion_iterators.vh"
@@ -164,9 +164,10 @@ module dmux_lfmr #(
     wire    [(((STRUCTURE_SIZE-1)+OUTPUT_COUNT)*WIDTH)-1:0] w_out_pipeline;
 
     dmux_combinational #(.WIDTH(WIDTH), .OUTPUT_COUNT(OUTPUT_COUNT), .LATENCY(LATENCY), .TYPE(TYPE), .PRINT(PRINT) )
-        dmux_object(.clk(clk), .sel(sel), .in(in), .in_pipeline(r_in_pipeline), .out(out), .out_pipeline(w_out_pipeline) );
+        object_dmux_combinational(.clk(clk), .sel(sel), .in(in), .in_pipeline(r_in_pipeline), .out(out), .out_pipeline(w_out_pipeline) );
     
-    always @( posedge clk ) r_in_pipeline <= w_out_pipeline;
+    if( STRUCTURE_SIZE != 1 )
+        always @( posedge clk ) r_in_pipeline <= w_out_pipeline;
 
 ///////////////////////////////////////////////////////////////////////////////
 // formal verification starts here
