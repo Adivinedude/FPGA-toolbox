@@ -32,14 +32,15 @@
 //                          variable with and latency mux pipeline
 //  mux_lfmr            - A pipelined mux which backfeeds into a single vector
 //                          object. Providing high FMAX, with low throughput
+//                          only the mux's are pipelined, not the .sel() port.
 //  mux_pipeline        - A fully pipelined mux which produces high FMAX with
-//                          full throughput
+//                          full throughput. here the .sel() port is pipelined
 `default_nettype none
 
 module mux_pipeline #(
     parameter WIDTH = 1,
-    parameter INPUT_COUNT = 3,
-    parameter LATENCY = 1,
+    parameter INPUT_COUNT = 10,
+    parameter LATENCY = 20,
     parameter PRINT = 0
 )( clk, sel, in, out );
     localparam SELECT_SIZE = $clog2(INPUT_COUNT);
@@ -93,12 +94,6 @@ module mux_pipeline #(
                         (idx==0)?0:f_select_register_size(idx-1)+SELECT_SIZE
                         +:SEL_WIDTH ];                  
             end
-    //////////// { r_sel, sel }    { r_sel }
-    //    sel // 0- 3 2 1 0     // 
-    //  r_sel // 1- 6 5 4       // 2 1 0
-              // 2- 8 7         // 4 3
-              // 3- 9           // 5
-    //  w_sel //    9 7 4 0     // 5 3 0 x
             for( idx = 0; idx < STRUCTURE_DEPTH-1; idx = idx + 1 )begin
                 if(PRINT!=0)initial $display( "mux_pipeline - idx:%1d r_sel[%1d+:%1d] <= w_sel_in_pipe[%1d+:%1d]"/**/ ,
                     idx,
