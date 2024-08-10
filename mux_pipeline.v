@@ -39,8 +39,8 @@
 
 module mux_pipeline #(
     parameter WIDTH = 1,
-    parameter INPUT_COUNT = 10,
-    parameter LATENCY = 20,
+    parameter INPUT_COUNT = 2,
+    parameter LATENCY = 0,
     parameter PRINT = 0
 )( clk, sel, in, out );
     localparam SELECT_SIZE = $clog2(INPUT_COUNT);
@@ -111,7 +111,7 @@ module mux_pipeline #(
     endgenerate
 
     mux_lfmr #(.WIDTH(WIDTH), .INPUT_COUNT(INPUT_COUNT), .LATENCY(LATENCY), .TYPE(0), .PRINT(PRINT) )
-        mux_object(.clk(clk), .sel(w_sel), .in(in), .out(out) );
+        object_mux_lfmr(.clk(clk), .sel(w_sel), .in(in), .out(out) );
     
 endmodule
 
@@ -157,9 +157,10 @@ module mux_lfmr #(
     wire    [(STRUCTURE_SIZE*WIDTH)-1:0]    w_out_pipeline;
 
     mux_combinational #(.WIDTH(WIDTH), .INPUT_COUNT(INPUT_COUNT), .LATENCY(LATENCY), .TYPE(TYPE), .PRINT(PRINT) )
-        mux_object(.clk(clk), .sel(sel), .in(in), .in_pipeline(r_in_pipeline), .out(out), .out_pipeline(w_out_pipeline) );
+        object_mux_combinational(.clk(clk), .sel(sel), .in(in), .in_pipeline(r_in_pipeline), .out(out), .out_pipeline(w_out_pipeline) );
     
-    always @( posedge clk ) r_in_pipeline <= w_out_pipeline;
+    if( STRUCTURE_SIZE != 1 )
+        always @( posedge clk ) r_in_pipeline <= w_out_pipeline;
 
     `ifdef FORMAL
         `define ASSERT assert
@@ -248,7 +249,7 @@ module mux_combinational #(
         input unused;
         begin
             case(TYPE)
-                default:    f_GetMuxSize = f_NaryRecursionGetUnitWidthForLatency(INPUT_COUNT, LATENCY); // BUG. for input_count 3 LATENCY 1 - returns incorrect value. rt is 4four. should be 2two
+                default:    f_GetMuxSize = f_NaryRecursionGetUnitWidthForLatency(INPUT_COUNT, LATENCY);
             endcase
             f_GetMuxSize = 'd1 << $clog2(f_GetMuxSize);
         end
@@ -337,7 +338,8 @@ module mux_combinational #(
                 if( unit_index == f_NaryRecursionGetVectorSize(INPUT_COUNT,MUX_SIZE)-1 ) begin
                     initial if(PRINT!=0)$display("OUT = UI:%0d", unit_index);
                     // always @(posedge clk) $display("OUT:%0d UI:%0d SEL:%0d", out, unit_index, sel);
-                    assign out = unit_inputs[ sel[f_GetUnitDepth(unit_index)*SEL_WIDTH+:SEL_WIDTH]*WIDTH +:WIDTH ];
+                    // if( LATENCY == 0 )
+                        //assign out = unit_inputs[ sel[f_GetUnitDepth(unit_index)*SEL_WIDTH+:SEL_WIDTH]*WIDTH +:WIDTH ];
                 end
             end else begin
                 initial if(PRINT!=0)$display("");
