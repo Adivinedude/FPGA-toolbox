@@ -5,7 +5,10 @@ A collection of modules I have written while learning verilog.
 High speed, self pipelining counter with strobe output. Configurable retiming is based on the parameter 'latency', which specifies the maximum number of clock cycles plus one, that the output should take to be valid. <sub>[verified](verification/counter.sby)</sub>
 
 ## [dmux_pipeline.v](dmux_pipeline.v)
-High speed demultiplexer with variable width and configurable retiming. Operating modes include 'Fixed latency' and 'Optimize for size' <sub>[verified](verification/dmux_lfmr.sby)</sub>
+High speed demultiplexer with variable width and configurable retiming.
+* dmux_pipeline - fully pipelined dmux module. Wrapper module, managing the pipelining of the sel structure.
+* dmux_lfmr - linear feedback dmux module. Wrapper module, managing the pipelining of a multicycle demultiplexer.<sub>[verified](verification/dmux_lfmr.sby)</sub>
+* dmux_combinational - Purely combinational dmux module, with automatic data structure and dmux chain construction.
 
 ## [math_pipelined.v](math_pipelined.v)
 Building blocks for a fast pipelined ripple carry ALU with configurable width and retiming.
@@ -21,6 +24,7 @@ Building blocks for a fast pipelined ripple carry ALU with configurable width an
 
 ## [mux_pipeline.v](mux_pipeline.v)
 Building blocks for a fast pipelined multiplexer with configurable width and retiming. Operating modes include 'Fixed latency' and 'Optimize for size'
+* mux_pipeline - fully pipelined mux module. Wrapper module, managing the pipelining of the sel structure.
 * mux_lfmr - linear feedback mux module. Wrapper module, managing the pipelining of a multicycle multiplexer. <sub>[verified](verification/mux_lfmr.sby)</sub>
 * mux_combinational - Purely combinational mux module, with automatic data structure and mux chain construction.
 
