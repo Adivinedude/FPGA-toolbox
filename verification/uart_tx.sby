@@ -42,7 +42,7 @@ smtbmc
 read -define FORMAL_UART_TX
 read -formal synchronizer.v
 read -formal uart_include.vh
-read -formal math_pipelined.v
+read -formal math_pipeline.v
 read -formal counter.v
 read -formal mux_pipeline.v
 read -formal uart_tx.v
@@ -61,7 +61,7 @@ prep -top uart_tx
 synchronizer.v
 uart_include.vh
 recursion_iterators.vh
-math_pipelined.v
+math_pipeline.v
 counter.v
 mux_pipeline.v
 uart_tx.v

@@ -10,7 +10,7 @@ High speed demultiplexer with variable width and configurable retiming.
 * dmux_lfmr - linear feedback dmux module. Wrapper module, managing the pipelining of a multicycle demultiplexer.<sub>[verified](verification/dmux_lfmr.sby)</sub>
 * dmux_combinational - Purely combinational dmux module, with automatic data structure and dmux chain construction.
 
-## [math_pipelined.v](math_pipelined.v)
+## [math_pipeline.v](math_pipeline.v)
 Building blocks for a fast pipelined ripple carry ALU with configurable width and retiming.
 * math_lfmr - linear feedback math register. Wrapper module, managing the retiming of a single vector.
 * math_combinational - Purely combinational ALU module, with automatic data structure and carry chain construction.

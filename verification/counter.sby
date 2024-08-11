@@ -33,7 +33,7 @@ smtbmc
 
 [script]
 read -formal recursion_iterators.vh
-read -formal math_pipelined.v
+read -formal math_pipeline.v
 read -define FORMAL_COUNTER_WITH_STROBE
 read -formal counter.v
 
@@ -50,4 +50,4 @@ prep -top counter_with_strobe
 # List all files and relative paths here
 counter.v
 recursion_iterators.vh
-math_pipelined.v
+math_pipeline.v
