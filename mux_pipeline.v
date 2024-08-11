@@ -40,7 +40,7 @@
 module mux_pipeline #(
     parameter WIDTH = 1,
     parameter INPUT_COUNT = 2,
-    parameter LATENCY = 1,
+    parameter LATENCY = 0,
     parameter PRINT = 0
 )( clk, sel, in, out );
     localparam SELECT_SIZE = $clog2(INPUT_COUNT);
@@ -57,22 +57,21 @@ module mux_pipeline #(
     localparam STRUCTURE_SIZE   = f_NaryRecursionGetVectorSize( INPUT_COUNT, MUX_SIZE );
     localparam STRUCTURE_DEPTH  = f_NaryRecursionGetDepth(INPUT_COUNT, MUX_SIZE);
     
-    // pipeline the 'sel' input
-    function automatic integer f_select_register_size;
+    // f_select_register_address: returns the address of the first register at depth.
+    function automatic integer f_select_register_address;
         input integer structure_depth;
-        begin : named_block
+        begin : block_select_register_address
         integer total_size;
             total_size              = $clog2(INPUT_COUNT);
-            f_select_register_size  = 0;
+            f_select_register_address  = 0;
             for( structure_depth = structure_depth; structure_depth > 0; structure_depth = structure_depth - 1) begin
                 total_size = total_size - SEL_WIDTH;
-                f_select_register_size = f_select_register_size + total_size;
+                f_select_register_address = f_select_register_address + total_size;
             end
         end
     endfunction
 
-    localparam PIPELINE_R_SIZE = f_select_register_size(STRUCTURE_DEPTH);
-
+    localparam PIPELINE_R_SIZE = f_select_register_address(STRUCTURE_DEPTH);
     reg     [PIPELINE_R_SIZE-1:0]               r_sel = 0;    // .sel() pipeline register
     wire    [SELECT_SIZE-1:0]                   w_sel;        // wires to pass to combinational .sel()
     wire    [SELECT_SIZE+PIPELINE_R_SIZE-1:0]   w_sel_in_pipe = { r_sel, sel };
@@ -87,29 +86,28 @@ module mux_pipeline #(
                     idx,
                     idx*SEL_WIDTH, 
                         SEL_WIDTH,
-                    (idx==0)?0:f_select_register_size(idx-1)+SELECT_SIZE, 
+                    (idx==0)?0:f_select_register_address(idx-1)+SELECT_SIZE, 
                         SEL_WIDTH 
                 );
                 assign w_sel[idx*SEL_WIDTH+:SEL_WIDTH] 
                     = w_sel_in_pipe[
-                        (idx==0)?0:f_select_register_size(idx-1)+SELECT_SIZE
+                        (idx==0)?0:f_select_register_address(idx-1)+SELECT_SIZE
                         +:SEL_WIDTH ];                  
             end
             for( idx = 0; idx < STRUCTURE_DEPTH-1; idx = idx + 1 )begin
                 if(PRINT!=0)initial $display( "mux_pipeline - idx:%1d r_sel[%1d+:%1d] <= w_sel_in_pipe[%1d+:%1d]"/**/ ,
                     idx,
-                    f_select_register_size(idx), 
-                        f_select_register_size(idx+1)-f_select_register_size(idx),
-                    (idx==0)?SEL_WIDTH:f_select_register_size(idx-1)+SELECT_SIZE+1,
-                        f_select_register_size(idx+1)-f_select_register_size(idx)
+                    f_select_register_address(idx), 
+                        f_select_register_address(idx+1)-f_select_register_address(idx),
+                    (idx==0)?SEL_WIDTH:f_select_register_address(idx-1)+SELECT_SIZE+1,
+                        f_select_register_address(idx+1)-f_select_register_address(idx)
                 );
                 always @( posedge clk ) 
-                    r_sel[ f_select_register_size(idx) 
-                        +: f_select_register_size(idx+1)-f_select_register_size(idx) ]
-                    <= w_sel_in_pipe[ (idx==0)?SEL_WIDTH:f_select_register_size(idx-1)+SELECT_SIZE+1 
-                        +: f_select_register_size(idx+1)-f_select_register_size(idx) ];
+                    r_sel[ f_select_register_address(idx) 
+                        +: f_select_register_address(idx+1)-f_select_register_address(idx) ]
+                    <= w_sel_in_pipe[ (idx==0)?SEL_WIDTH:f_select_register_address(idx-1)+SELECT_SIZE+1 
+                        +: f_select_register_address(idx+1)-f_select_register_address(idx) ];
             end
-            initial $display( "LATENCY:%1d DEPTH:%1d", LATENCY, STRUCTURE_DEPTH);
             if( LATENCY <= STRUCTURE_DEPTH ) begin
                 assign out = w_out;
             end else begin
