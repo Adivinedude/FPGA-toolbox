@@ -40,7 +40,7 @@
 module mux_pipeline #(
     parameter WIDTH = 1,
     parameter INPUT_COUNT = 2,
-    parameter LATENCY = 0,
+    parameter LATENCY = 1,
     parameter PRINT = 0
 )( clk, sel, in, out );
     localparam SELECT_SIZE = $clog2(INPUT_COUNT);
@@ -76,6 +76,7 @@ module mux_pipeline #(
     reg     [PIPELINE_R_SIZE-1:0]               r_sel = 0;    // .sel() pipeline register
     wire    [SELECT_SIZE-1:0]                   w_sel;        // wires to pass to combinational .sel()
     wire    [SELECT_SIZE+PIPELINE_R_SIZE-1:0]   w_sel_in_pipe = { r_sel, sel };
+    wire    [WIDTH-1:0]                         w_out;
     if(PRINT!=0)initial $display("mux_pipeline - SELECT_SIZE:%1d MUX_SIZE:%1d SEL_WIDTH:%1d STRUCTURE_SIZE:%1d STRUCTURE_DEPTH:%1d PIPELINE_R_SIZE:%1d",
         SELECT_SIZE, MUX_SIZE, SEL_WIDTH, STRUCTURE_SIZE, STRUCTURE_DEPTH, PIPELINE_R_SIZE );
     generate
@@ -108,10 +109,17 @@ module mux_pipeline #(
                     <= w_sel_in_pipe[ (idx==0)?SEL_WIDTH:f_select_register_size(idx-1)+SELECT_SIZE+1 
                         +: f_select_register_size(idx+1)-f_select_register_size(idx) ];
             end
+            initial $display( "LATENCY:%1d DEPTH:%1d", LATENCY, STRUCTURE_DEPTH);
+            if( LATENCY <= STRUCTURE_DEPTH ) begin
+                assign out = w_out;
+            end else begin
+                synchronizer #(.WIDTH(WIDTH), .DEPTH_INPUT( LATENCY - STRUCTURE_DEPTH ), .DEPTH_OUTPUT(0) )
+                    latency_correction( .clk_in(clk), .in(w_out), .clk_out(), .out(out) );
+            end
     endgenerate
 
     mux_lfmr #(.WIDTH(WIDTH), .INPUT_COUNT(INPUT_COUNT), .LATENCY(LATENCY), .TYPE(0), .PRINT(PRINT) )
-        object_mux_lfmr(.clk(clk), .sel(w_sel), .in(in), .out(out) );
+        object_mux_lfmr(.clk(clk), .sel(w_sel), .in(in), .out(w_out) );
     
 endmodule
 
@@ -159,7 +167,7 @@ module mux_lfmr #(
     mux_combinational #(.WIDTH(WIDTH), .INPUT_COUNT(INPUT_COUNT), .LATENCY(LATENCY), .TYPE(TYPE), .PRINT(PRINT) )
         object_mux_combinational(.clk(clk), .sel(sel), .in(in), .in_pipeline(r_in_pipeline), .out(out), .out_pipeline(w_out_pipeline) );
     
-    if( STRUCTURE_SIZE != 1 )
+    if( LATENCY != 0 )
         always @( posedge clk ) r_in_pipeline <= w_out_pipeline;
 
     `ifdef FORMAL
@@ -328,18 +336,20 @@ module mux_combinational #(
                         assign unit_inputs[WIDTH*input_index+:WIDTH] = {WIDTH{1'b0}};
                 end
                 // select the units output.
-                if( f_GetUnitWidth(unit_index) != 1 ) begin
-                    initial if(PRINT!=0)$display(" sel - SEL[%0d+:%0d]", f_GetUnitDepth(unit_index)*SEL_WIDTH, SEL_WIDTH );
-                    assign out_pipeline[(f_GetUnitOutputAddress(unit_index))*WIDTH+:WIDTH] = unit_inputs[sel[f_GetUnitDepth(unit_index)*SEL_WIDTH+:SEL_WIDTH]*WIDTH+:WIDTH];
+                if( LATENCY == 0 ) begin
+                    assign out = unit_inputs[ sel[f_GetUnitDepth(unit_index)*SEL_WIDTH+:SEL_WIDTH]*WIDTH +:WIDTH ];
                 end else begin
-                    initial if(PRINT!=0)$display(" set");
-                    assign out_pipeline[(f_GetUnitOutputAddress(unit_index))*WIDTH+:WIDTH] = unit_inputs[0+:WIDTH];
-                end
-                if( unit_index == f_NaryRecursionGetVectorSize(INPUT_COUNT,MUX_SIZE)-1 ) begin
-                    initial if(PRINT!=0)$display("OUT = UI:%0d", unit_index);
-                    // always @(posedge clk) $display("OUT:%0d UI:%0d SEL:%0d", out, unit_index, sel);
-                    // if( LATENCY == 0 )
-                        //assign out = unit_inputs[ sel[f_GetUnitDepth(unit_index)*SEL_WIDTH+:SEL_WIDTH]*WIDTH +:WIDTH ];
+                    if( f_GetUnitWidth(unit_index) != 1 ) begin
+                        initial if(PRINT!=0)$display(" sel - SEL[%0d+:%0d]", f_GetUnitDepth(unit_index)*SEL_WIDTH, SEL_WIDTH );
+                        assign out_pipeline[(f_GetUnitOutputAddress(unit_index))*WIDTH+:WIDTH] = unit_inputs[sel[f_GetUnitDepth(unit_index)*SEL_WIDTH+:SEL_WIDTH]*WIDTH+:WIDTH];
+                    end else begin
+                        initial if(PRINT!=0)$display(" set");
+                        assign out_pipeline[(f_GetUnitOutputAddress(unit_index))*WIDTH+:WIDTH] = unit_inputs[0+:WIDTH];
+                    end
+                    if( unit_index == f_NaryRecursionGetVectorSize(INPUT_COUNT,MUX_SIZE)-1 ) begin
+                        initial if(PRINT!=0)$display("OUT = UI:%0d", unit_index);
+                        assign out = in_pipeline[(f_GetUnitOutputAddress(unit_index))*WIDTH+:WIDTH];
+                    end
                 end
             end else begin
                 initial if(PRINT!=0)$display("");
