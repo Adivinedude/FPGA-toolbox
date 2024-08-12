@@ -27,9 +27,82 @@
 //		http://www.gnu.org/licenses/gpl.html
 ////////////////////////////////////////////////////////////////////////////////
 
-////////////////////////////////////////////////
-// Tail Recursion Iteration Functions         //
-// f_TailRecursionGetVectorSize           //
+////////////////////////////////////
+// General functions              //              
+// f_GetPipelineVectorSize        //
+// f_GetPipelineDepthStartAddress //
+// f_GetPipelineDepthEndAddress   //
+// f_GetPipelineDepthSize         //
+//
+// returns the total size of continually reducing pipeline vector.
+// <2> <1> <0>
+//     <4> <3>
+//         <5>
+// base:3 total_units: 6
+function automatic integer f_GetPipelineVectorSize;
+    input integer base, unit_width;
+    f_GetPipelineVectorSize = (base * ( base + 1 ) / 2) * unit_width;
+endfunction
+// initial begin:test_SumOfSubtrahend integer idx;for(idx=0;idx<5;idx=idx+1)begin $display("f_GetPipelineVectorSize(%1d):%1d",idx,f_GetPipelineVectorSize(idx, 1));end end
+
+// returns the start address of a level of a continually reducing vector
+// level 0: <2> <1> <0>
+// level 1:     <4> <3>
+// level 2:         <5>
+// base:3 unit_width:1 
+// request_depth:0 returns 0
+// request_depth:1 returns 3
+// request_depth:2 returns 5
+// request_depth:3 returns -1. error out of bounds. invalid depth
+function automatic integer f_GetPipelineDepthStartAddress;
+    input integer base, unit_width, request_depth;
+    begin
+        if( request_depth >= base) begin
+            f_GetPipelineDepthStartAddress = ~0;
+        end else begin
+            f_GetPipelineDepthStartAddress = ( f_GetPipelineVectorSize(base, 1) - f_GetPipelineVectorSize(base-request_depth, 1) ) * unit_width;
+        end
+    end
+endfunction
+// initial begin:test_GetPipeLineDepthStartAddress integer idx;for(idx=0;idx<5;idx=idx+1)begin $display("f_GetPipelineDepthStartAddress( 3, 1, %1d ):%1d",idx,f_GetPipelineDepthStartAddress(3,1, idx));end end
+
+// returns the end address of a level of a continually reducing vector
+// level 0: <2> <1> <0>
+// level 1:     <4> <3>
+// level 2:         <5>
+// base:3 unit_width:1 
+// request_depth:0 returns 2
+// request_depth:1 returns 4
+// request_depth:2 returns 5
+// request_depth:3 returns -1. error out of bounds. invalid depth
+function automatic integer f_GetPipelineDepthEndAddress;
+    input integer base, unit_width, request_depth;
+    begin
+        if( request_depth >= base) begin
+            f_GetPipelineDepthEndAddress = ~0;
+        end else begin
+            f_GetPipelineDepthEndAddress = f_GetPipelineDepthStartAddress(base, 1, request_depth) + (base - request_depth - 1) * unit_width;
+        end
+    end
+endfunction
+// initial begin:test_GetPipelineDepthEndAddress integer idx;for(idx=0;idx<5;idx=idx+1)begin $display("f_GetPipelineDepthEndAddress( 3, 1, %1d ):%1d",idx,f_GetPipelineDepthEndAddress(3,1, idx));end end
+
+// returns the size of a level of a continually reducing vector
+function automatic integer f_GetPipelineDepthSize;
+    input integer base, unit_width, request_depth;
+    begin
+        if( request_depth >= base) begin
+            f_GetPipelineDepthSize = ~0;
+        end else begin
+            f_GetPipelineDepthSize = f_GetPipelineDepthEndAddress(base, unit_width, request_depth) - f_GetPipelineDepthStartAddress(base, unit_width, request_depth) + unit_width;
+        end
+    end
+endfunction
+initial begin:test_GetPipelineDepthSize integer idx;for(idx=0;idx<5;idx=idx+1)begin $display("f_GetPipelineDepthSize( 3, 1, %1d ):%1d",idx,f_GetPipelineDepthSize(3,1, idx));end end
+
+///////////////////////////////////////////
+// Tail Recursion Iteration Functions    //
+// f_TailRecursionGetVectorSize          //
 // f_TailRecursionGetLastUnitWidth       //
 // f_TailRecursionGetUnitWidthForLatency //
 // f_TailRecursionGetUnitInputAddress    //
@@ -195,7 +268,7 @@ endfunction
     // f_NaryRecursionGetVectorSizeOptimized //
     // f_NaryRecursionGetUnitWidth           //
     // f_NaryRecursionGetDepth               //
-    // f_NaryRecursionUnitDepth              //
+    // f_NaryRecursionGetUnitDepth           //
     // f_NaryRecursionGetUnitWidthForLatency //
     // f_NaryRecursionGetUnitInputAddress    //
     // f_NaryRecursionGetUnitInputAddressOptimized //
@@ -272,7 +345,7 @@ function automatic integer iterator_NaryRecursionVectorSize;
         iterator_NaryRecursionVectorSize = rt;
     end
 endfunction
-    // initial begin:test_NaryRecursionVectorSize integer idx;$display("f_NaryRecursionGetVectorSize()");for(idx=2;idx<=10;idx=idx+1)begin $display("\t\t\t:10 lut_width:%d cmp_width:%d",idx,f_NaryRecursionGetVectorSize(10,idx));end end
+    // initial begin:test_NaryRecursionVectorSize integer idx, idy;$display("f_NaryRecursionGetVectorSize()");for(idy=2;idy<=10;idy=idy+1)begin for(idx=2;idx<=idy;idx=idx+1)begin $display("\t:base:%1d lut_width:%2d cmp_width:%2d",idy,idx,f_NaryRecursionGetVectorSize(idy,idx));end end end
 
 // f_NaryRecursionGetUnitWidth - Returns the total number of inputs for unit requested
 //  base        - Total number of input bits to compare
@@ -420,7 +493,7 @@ function automatic integer iterator_NaryRecursionGetUnitWidthForLatency;
                     :iterator_NaryRecursionGetUnitWidthForLatency(base,latency,lut_width+1);
     end
 endfunction
-    // initial begin:test_NaryRecursionGetLastUnitWidthForLatency integer idx;$display("f_NaryRecursionGetUnitWidthForLatency()");for(idx=1;idx<=10;idx=idx+1)begin $display("\t\t\tbase:10 latency:%d lut_width:%d",idx,f_NaryRecursionGetUnitWidthForLatency(10,idx));end end
+    // initial begin:test_NaryRecursionGetLastUnitWidthForLatency integer idx,idy;$display("f_NaryRecursionGetUnitWidthForLatency()");for(idy=2;idy<=10;idy=idy+1)begin for(idx=0;idx<=idy;idx=idx+1)begin $display("\tbase:%2d latency:%2d lut_width:%2d",idy,idx,f_NaryRecursionGetUnitWidthForLatency(idy,idx));end end end
 
 // f_NaryRecursionGetUnitInputAddress - Returns the index for the base bit requested. returns ~0 is input is request is invalid
 //  cmp_width       - width of the comparator
