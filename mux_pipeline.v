@@ -52,6 +52,8 @@ module mux_pipeline #(
     
     `include "recursion_iterators.vh"
 
+    // BugFix - the mux size must be a power of 2 in order to work properly with the pipelined .sel()
+    // if not each step of the .sel() pipeline will require divide by MUX_SIZE and remainder. This is ease with 2**N.
     localparam MUX_SIZE         = 'd1 << $clog2(f_NaryRecursionGetUnitWidthForLatency(INPUT_COUNT, LATENCY));
     localparam SEL_WIDTH        = $clog2(MUX_SIZE);
     localparam STRUCTURE_SIZE   = f_NaryRecursionGetVectorSize( INPUT_COUNT, MUX_SIZE );
