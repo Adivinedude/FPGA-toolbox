@@ -33,6 +33,7 @@
 // f_GetPipelineDepthStartAddress //
 // f_GetPipelineDepthEndAddress   //
 // f_GetPipelineDepthSize         //
+// f_GetPipelineDepth             //
 //
 // returns the total size of continually reducing pipeline vector.
 // <2> <1> <0>
@@ -98,7 +99,12 @@ function automatic integer f_GetPipelineDepthSize;
         end
     end
 endfunction
-initial begin:test_GetPipelineDepthSize integer idx;for(idx=0;idx<5;idx=idx+1)begin $display("f_GetPipelineDepthSize( 3, 1, %1d ):%1d",idx,f_GetPipelineDepthSize(3,1, idx));end end
+// initial begin:test_GetPipelineDepthSize integer idx;for(idx=0;idx<5;idx=idx+1)begin $display("f_GetPipelineDepthSize( 3, 1, %1d ):%1d",idx,f_GetPipelineDepthSize(3,1, idx));end end
+
+function automatic integer f_GetPipelineDepth;
+    input integer input_count;
+    f_GetPipelineDepth = input_count - 1;
+endfunction
 
 ///////////////////////////////////////////
 // Tail Recursion Iteration Functions    //
