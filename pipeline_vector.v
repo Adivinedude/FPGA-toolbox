@@ -51,20 +51,21 @@
 module pipeline_vector #( 
     parameter WIDTH = 1,
     parameter SIZE  = 3,
-    parameter PRINT = 1
+    parameter PRINT = 0
     )( in, out_shift_left, out_shift_right, sel_left, sel_right );
 
     `include "recursion_iterators.vh"
 
     localparam VECTOR_SIZE = f_GetPipelineVectorSize( SIZE - 1, WIDTH );
 
-    input   wire    [VECTOR_SIZE+(SIZE*WIDTH)-1:0]   in;
+    input   wire    [f_GetPipelineVectorSize(SIZE, WIDTH)-1:0]   in;
     output  wire    [VECTOR_SIZE-1:0]   out_shift_left;
     output  wire    [VECTOR_SIZE-1:0]   out_shift_right;
     output  wire    [SIZE*WIDTH -1:0]   sel_left;
     output  wire    [SIZE*WIDTH -1:0]   sel_right;
     // out_shift_left
     for( idx = 0; idx < SIZE-1; idx = idx + 1 )begin
+        if(PRINT!=0&&idx==0)initial $display("pipeline_vector - WIDTH:%1d SIZE:%1d", WIDTH, SIZE);
         if(PRINT!=0)initial $display( "pipeline_vector - idx:%1d out_shift_left[%1d:%1d] = in[%1d:%1d]", 
             idx,
             f_GetPipelineDepthEndAddress(SIZE-1, WIDTH, idx),
@@ -111,7 +112,7 @@ module pipeline_vector #(
             f_GetPipelineDepthStartAddress(SIZE, WIDTH, idx),
             WIDTH
         );
-        assign sel_left[ idx*WIDTH+:WIDTH ] = in[f_GetPipelineDepthStartAddress(SIZE, WIDTH, idx) +: WIDTH];
+        assign sel_right[ idx*WIDTH+:WIDTH ] = in[f_GetPipelineDepthStartAddress(SIZE, WIDTH, idx) +: WIDTH];
     end
 
 endmodule

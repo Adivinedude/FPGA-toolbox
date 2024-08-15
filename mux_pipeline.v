@@ -41,7 +41,7 @@ module mux_pipeline #(
     parameter WIDTH = 1,
     parameter INPUT_COUNT = 2,
     parameter LATENCY = 0,
-    parameter PRINT = 0
+    parameter PRINT = 1
 )( clk, sel, in, out );
     localparam SELECT_SIZE = $clog2(INPUT_COUNT);
 
@@ -60,43 +60,20 @@ module mux_pipeline #(
     localparam STRUCTURE_DEPTH  = f_NaryRecursionGetDepth(INPUT_COUNT, MUX_SIZE);
     
     localparam PIPELINE_R_SIZE = f_GetPipelineVectorSize(STRUCTURE_DEPTH-1, SEL_WIDTH);
-    reg     [PIPELINE_R_SIZE-1:0]               r_sel = 0;    // .sel() pipeline register
-    wire    [SELECT_SIZE-1:0]                   w_sel;        // wires to pass to combinational .sel()
-    wire    [SELECT_SIZE+PIPELINE_R_SIZE-1:0]   w_sel_in_pipe = { r_sel, sel };
     wire    [WIDTH-1:0]                         w_out;
+
+    reg     [PIPELINE_R_SIZE-1:0]               r_sel_pipe = 0;    // .sel() pipeline vector
+    wire    [PIPELINE_R_SIZE-1:0]               w_sel_pipe;
+    wire    [SELECT_SIZE-1:0]                   w_sel;        // wires to pass to combinational .sel()
+    
+    pipeline_vector #( .WIDTH(SEL_WIDTH), .SIZE(STRUCTURE_DEPTH), .PRINT(PRINT) )
+        sel_pipeline( .in({r_sel_pipe, sel}), .out_shift_right(w_sel_pipe), .sel_right(w_sel));
+    always @( posedge clk ) r_sel_pipe <= w_sel_pipe;
+
     if(PRINT!=0)initial $display("mux_pipeline - SELECT_SIZE:%1d MUX_SIZE:%1d SEL_WIDTH:%1d STRUCTURE_SIZE:%1d STRUCTURE_DEPTH:%1d PIPELINE_R_SIZE:%1d",
         SELECT_SIZE, MUX_SIZE, SEL_WIDTH, STRUCTURE_SIZE, STRUCTURE_DEPTH, PIPELINE_R_SIZE );
     generate
         genvar idx;
-            // perform w_sel assignment
-            for( idx = 0; idx < STRUCTURE_DEPTH; idx = idx + 1 )begin
-                if(PRINT!=0)initial $display( "mux_pipeline - idx:%1d w_sel[%1d+:%1d] = w_sel_in_pipe[%1d+:%1d]", 
-                    idx,
-                    idx*SEL_WIDTH, 
-                        SEL_WIDTH,
-                    f_GetPipelineDepthStartAddress(STRUCTURE_DEPTH, SEL_WIDTH, idx), 
-                        SEL_WIDTH 
-                );
-                assign w_sel[idx*SEL_WIDTH+:SEL_WIDTH] 
-                    = w_sel_in_pipe[
-                        f_GetPipelineDepthStartAddress(STRUCTURE_DEPTH, SEL_WIDTH, idx)
-                        +:SEL_WIDTH ];                  
-            end
-            for( idx = 0; idx < STRUCTURE_DEPTH-1; idx = idx + 1 )begin
-                if(PRINT!=0)initial $display( "mux_pipeline - idx:%1d r_sel[%1d+:%1d] <= w_sel_in_pipe[%1d+:%1d]",
-                    idx,
-                    f_GetPipelineDepthStartAddress(STRUCTURE_DEPTH-1, SEL_WIDTH, idx), 
-                        f_GetPipelineDepthSize(STRUCTURE_DEPTH-1, SEL_WIDTH, idx),
-                    f_GetPipelineDepthStartAddress(STRUCTURE_DEPTH, SEL_WIDTH, idx)+SEL_WIDTH,
-                        f_GetPipelineDepthSize(STRUCTURE_DEPTH-1, SEL_WIDTH, idx)
-                );
-                always @( posedge clk ) 
-                    r_sel[ f_GetPipelineDepthStartAddress(STRUCTURE_DEPTH-1, SEL_WIDTH, idx) 
-                        +: f_GetPipelineDepthSize(STRUCTURE_DEPTH-1, SEL_WIDTH, idx) ]
-                    <= w_sel_in_pipe[ f_GetPipelineDepthStartAddress(STRUCTURE_DEPTH, SEL_WIDTH, idx)+SEL_WIDTH
-                        +: f_GetPipelineDepthSize(STRUCTURE_DEPTH-1, SEL_WIDTH, idx) ];
-            end
-
             if( LATENCY <= STRUCTURE_DEPTH ) begin
                 assign out = w_out;
             end else begin
