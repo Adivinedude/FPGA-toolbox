@@ -58,7 +58,7 @@ module pipeline_vector #(
 
     localparam VECTOR_SIZE = f_GetPipelineVectorSize( SIZE - 1, WIDTH );
 
-    input   wire    [VECTOR_SIZE+(SIZE*WIDTH)-1:0]   in;
+    input   wire    [f_GetPipelineVectorSize(SIZE,WIDTH)-1:0]   in;
     output  wire    [VECTOR_SIZE-1:0]   out_shift_left;
     output  wire    [VECTOR_SIZE-1:0]   out_shift_right;
     output  wire    [SIZE*WIDTH -1:0]   sel_left;
