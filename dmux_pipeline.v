@@ -27,7 +27,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 `default_nettype none
-// Multiplexer with a fixed output latency.
+// Demultiplexer with a fixed output latency.
 
 module dmux_pipeline #(
     parameter WIDTH = 1,
