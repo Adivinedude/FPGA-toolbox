@@ -56,7 +56,6 @@ module mux_pipeline #(
     // if not each step of the .sel() pipeline will require divide by MUX_SIZE and remainder. This is ease with 2**N.
     localparam MUX_SIZE         = 'd1 << $clog2(f_NaryRecursionGetUnitWidthForLatency(INPUT_COUNT, LATENCY));
     localparam SEL_WIDTH        = $clog2(MUX_SIZE);
-    localparam STRUCTURE_SIZE   = f_NaryRecursionGetVectorSize( INPUT_COUNT, MUX_SIZE );
     localparam STRUCTURE_DEPTH  = f_NaryRecursionGetDepth(INPUT_COUNT, MUX_SIZE);
     
     localparam PIPELINE_R_SIZE = f_GetPipelineVectorSize(STRUCTURE_DEPTH-1, SEL_WIDTH);
@@ -70,8 +69,8 @@ module mux_pipeline #(
         mux_sel_pipeline( .in({r_sel_pipe, sel}), .out_shift_right(w_sel_pipe), .sel_right(w_sel));
     always @( posedge clk ) r_sel_pipe <= w_sel_pipe;
 
-    if(PRINT!=0)initial $display("mux_pipeline - SELECT_SIZE:%1d MUX_SIZE:%1d SEL_WIDTH:%1d STRUCTURE_SIZE:%1d STRUCTURE_DEPTH:%1d PIPELINE_R_SIZE:%1d",
-        SELECT_SIZE, MUX_SIZE, SEL_WIDTH, STRUCTURE_SIZE, STRUCTURE_DEPTH, PIPELINE_R_SIZE );
+    if(PRINT!=0)initial $display("mux_pipeline - SELECT_SIZE:%1d MUX_SIZE:%1d SEL_WIDTH:%1d STRUCTURE_DEPTH:%1d PIPELINE_R_SIZE:%1d",
+        SELECT_SIZE, MUX_SIZE, SEL_WIDTH, STRUCTURE_DEPTH, PIPELINE_R_SIZE );
     generate
         if( LATENCY <= STRUCTURE_DEPTH ) begin
             assign out = w_out;

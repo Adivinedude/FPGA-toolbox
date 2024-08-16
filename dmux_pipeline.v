@@ -46,7 +46,6 @@ module dmux_pipeline #(
 
     localparam MUX_SIZE         = 'd1 << $clog2(f_NaryRecursionGetUnitWidthForLatency(OUTPUT_COUNT, LATENCY));
     localparam SEL_WIDTH        = $clog2(MUX_SIZE);
-    localparam STRUCTURE_SIZE   = f_NaryRecursionGetVectorSize( OUTPUT_COUNT, MUX_SIZE );
     localparam STRUCTURE_DEPTH  = f_NaryRecursionGetDepth(OUTPUT_COUNT, MUX_SIZE);
     
     localparam PIPELINE_R_SIZE = f_GetPipelineVectorSize(STRUCTURE_DEPTH-1, SEL_WIDTH);
@@ -56,8 +55,8 @@ module dmux_pipeline #(
     wire    [PIPELINE_R_SIZE-1:0]               w_sel_pipe;
     wire    [SELECT_SIZE-1:0]                   w_sel, w_sel_reverseA, w_sel_reverseB;
 
-    if(PRINT!=0)initial $display("dmux_pipeline - SELECT_SIZE:%1d MUX_SIZE:%1d SEL_WIDTH:%1d STRUCTURE_SIZE:%1d STRUCTURE_DEPTH:%1d PIPELINE_R_SIZE:%1d",
-        SELECT_SIZE, MUX_SIZE, SEL_WIDTH, STRUCTURE_SIZE, STRUCTURE_DEPTH, PIPELINE_R_SIZE );
+    if(PRINT!=0)initial $display("dmux_pipeline - SELECT_SIZE:%1d MUX_SIZE:%1d SEL_WIDTH:%1d STRUCTURE_DEPTH:%1d PIPELINE_R_SIZE:%1d",
+        SELECT_SIZE, MUX_SIZE, SEL_WIDTH, STRUCTURE_DEPTH, PIPELINE_R_SIZE );
     generate
         if( LATENCY <= STRUCTURE_DEPTH ) begin
             assign w_in = in;
