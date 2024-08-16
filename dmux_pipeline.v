@@ -49,76 +49,40 @@ module dmux_pipeline #(
     localparam STRUCTURE_SIZE   = f_NaryRecursionGetVectorSize( OUTPUT_COUNT, MUX_SIZE );
     localparam STRUCTURE_DEPTH  = f_NaryRecursionGetDepth(OUTPUT_COUNT, MUX_SIZE);
     
-    // pipeline the 'sel' input
-    function automatic integer f_select_register_size;
-        input integer structure_depth;
-        begin : named_block
-        integer total_size;
-            total_size              = $clog2(OUTPUT_COUNT);
-            f_select_register_size  = 0;
-            for( structure_depth = structure_depth; structure_depth > 0; structure_depth = structure_depth - 1) begin
-                total_size = total_size - SEL_WIDTH;
-                f_select_register_size = f_select_register_size + total_size;
-            end
-        end
-    endfunction
-
-    localparam PIPELINE_R_SIZE = f_select_register_size(STRUCTURE_DEPTH);
-
-    reg     [PIPELINE_R_SIZE-1:0]               r_sel = 0;    // .sel() pipeline register
-    wire    [SELECT_SIZE-1:0]                   sel_reverse;
-    wire    [SELECT_SIZE-1:0]                   w_sel;        // wires to pass to combinational .sel()'
-    wire    [SELECT_SIZE-1:0]                   w_sel_reverse;
-    wire    [SELECT_SIZE + PIPELINE_R_SIZE -1:0]w_sel_in_pipe = { r_sel, sel_reverse };
+    localparam PIPELINE_R_SIZE = f_GetPipelineVectorSize(STRUCTURE_DEPTH-1, SEL_WIDTH);
+    wire    [WIDTH-1:0]                         w_in;
+    wire    [SELECT_SIZE-1:0]                   w_sel_buffer;
+    reg     [PIPELINE_R_SIZE-1:0]               r_sel_pipe = 0;    // .sel() pipeline register
+    wire    [PIPELINE_R_SIZE-1:0]               w_sel_pipe;
+    wire    [SELECT_SIZE-1:0]                   w_sel, w_sel_reverseA, w_sel_reverseB;
 
     if(PRINT!=0)initial $display("dmux_pipeline - SELECT_SIZE:%1d MUX_SIZE:%1d SEL_WIDTH:%1d STRUCTURE_SIZE:%1d STRUCTURE_DEPTH:%1d PIPELINE_R_SIZE:%1d",
         SELECT_SIZE, MUX_SIZE, SEL_WIDTH, STRUCTURE_SIZE, STRUCTURE_DEPTH, PIPELINE_R_SIZE );
     generate
-        genvar idx;
-        for( idx = 0; idx < SELECT_SIZE; idx = idx + 1 )
-            assign sel_reverse[idx] = sel[SELECT_SIZE - 1 - idx];        
-        for( idx = 0; idx < SELECT_SIZE; idx = idx + 1 )
-            assign w_sel_reverse[idx] = w_sel[SELECT_SIZE - 1 - idx];        
-            // perform w_sel assignment
-            for( idx = 0; idx < STRUCTURE_DEPTH; idx = idx + 1 )begin
-                initial $display( "idx:%1d w_sel[%1d+:%1d] = w_sel_in_pipe[%1d+:%1d]", 
-                    idx,
-                    idx*SEL_WIDTH, 
-                        SEL_WIDTH,
-                    (idx==0)?0:f_select_register_size(idx-1)+SELECT_SIZE, 
-                        SEL_WIDTH 
-                );
-                assign w_sel[idx*SEL_WIDTH+:SEL_WIDTH] 
-                    = w_sel_in_pipe[
-                        (idx==0)?0:f_select_register_size(idx-1)+SELECT_SIZE
-                        +:SEL_WIDTH ];                  
-            end
-    // [x] step one reverse .sel() order
-    // [x] step two reverse w_sel order
-    //////////// { r_sel, sel }    { r_sel }
-    //    sel // 0- 3 2 1 0     // 
-    //  r_sel // 1- 6 5 4       // 2 1 0
-              // 2- 8 7         // 4 3
-              // 3- 9           // 5
-    //  w_sel //    9 7 4 0     // 5 3 0 x
-            for( idx = 0; idx < STRUCTURE_DEPTH-1; idx = idx + 1 )begin
-                initial $display( "idx:%1d r_sel[%1d+:%1d] <= w_sel_in_pipe[%1d+:%1d]"/**/ ,
-                    idx,
-                    f_select_register_size(idx), 
-                        f_select_register_size(idx+1)-f_select_register_size(idx),
-                    (idx==0)?SEL_WIDTH:f_select_register_size(idx-1)+SELECT_SIZE+1,
-                        f_select_register_size(idx+1)-f_select_register_size(idx)
-                );
-                always @( posedge clk ) 
-                    r_sel[ f_select_register_size(idx) 
-                        +: f_select_register_size(idx+1)-f_select_register_size(idx) ]
-                    <= w_sel_in_pipe[ (idx==0)?SEL_WIDTH:f_select_register_size(idx-1)+SELECT_SIZE+1 
-                        +: f_select_register_size(idx+1)-f_select_register_size(idx) ];
-            end
+        if( LATENCY <= STRUCTURE_DEPTH ) begin
+            assign w_in = in;
+            assign w_sel_buffer = sel;
+        end else begin
+            synchronizer #(.WIDTH(WIDTH+SELECT_SIZE), .DEPTH_INPUT( LATENCY - (STRUCTURE_DEPTH-1) ), .DEPTH_OUTPUT(0) )
+                dmux_latency_correction( .clk_in(clk), .in({in, sel}), .clk_out(), .out({w_in, w_sel_buffer}) );
+        end        
     endgenerate
 
+
+
+    pipeline_vector #( .WIDTH(SEL_WIDTH), .SIZE(STRUCTURE_DEPTH), .PRINT(PRINT) )
+        dmux_sel_pipeline(  .in({r_sel_pipe, w_sel_buffer}), 
+                            .out_shift_left(w_sel_pipe), 
+                            .sel_left(w_sel),
+                            .bit_reversal_inA(w_sel), 
+                            .bit_reversal_outA(w_sel_reverseA)//,
+                            // .bit_reversal_inB(w_sel),
+                            // .bit_reversal_outB(w_sel_reverseB) 
+        );
+    always @( posedge clk ) r_sel_pipe <= w_sel_pipe;
+
     dmux_lfmr #(.WIDTH(WIDTH), .OUTPUT_COUNT(OUTPUT_COUNT), .LATENCY(LATENCY), .TYPE(0), .PRINT(PRINT) )
-        object_dmux_lfmr(.clk(clk), .sel(w_sel_reverse), .in(in), .out(out) );
+        object_dmux_lfmr(.clk(clk), .sel(w_sel_reverseA), .in(w_in), .out(out) );
     
 endmodule
 

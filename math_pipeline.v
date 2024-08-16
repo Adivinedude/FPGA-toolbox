@@ -1,5 +1,5 @@
 ////////////////////////////////////////////////////////////////////////////////
-// Filename:	math.v
+// Filename:	math_pipeline.v
 //
 // Project:	math 
 //
@@ -27,6 +27,61 @@
 //		http://www.gnu.org/licenses/gpl.html
 ////////////////////////////////////////////////////////////////////////////////
 `default_nettype none
+
+///////////////////////////////////////////////////////////////////////////////
+// Content:
+//  math_combinational   - All the combinational logic required to generate a 
+//                          variable with and latency ALU pipeline
+//  math_lfmr            - A pipelined ALU which backfeeds into a single vector
+//                          object. Only the ALU's are pipelined, not the 
+//                          results, .I2() or .I3() ports
+//  mux_pipeline        - A fully pipelined ALU which produces high FMAX with
+//                          full throughput. here the results, .I2(), and .I3()
+//                          port are pipelined
+
+module math_pipeline
+    #(
+        parameter WIDTH     = 4,
+        parameter LATENCY   = 4
+    )
+    (
+        input   wire                clk,
+        input   wire                rst,
+        input   wire    [WIDTH-1:0] I1,
+        input   wire    [WIDTH-1:0] I2,
+        input   wire    [WIDTH-1:0] I3,
+        output  wire    [WIDTH-1:0] sum,
+        output  wire    [WIDTH-1:0] sub,
+        output  wire                gate_and,
+        output  wire                gate_or,
+        output  wire                gate_xor,
+        output  wire                cmp_eq,
+        output  wire                cmp_neq
+    );
+    `include "recursion_iterators.vh"
+    // ----- directly copied from math_lfmr
+    // determine the chunk width. knowing that each chunk will take 1 tick, 'width' / 'latency' will provide
+    // the needed delay as specified in parameter LATENCY. protect values from base2 rounding errors
+    // BugFix, prevent divide by zero condition.
+    localparam DENOMINATOR = (LATENCY==0) ? 1 : LATENCY;
+    localparam ALU_WIDTH  = (WIDTH / DENOMINATOR * DENOMINATOR) == WIDTH 
+            ? WIDTH / DENOMINATOR 
+            : WIDTH / DENOMINATOR + 1;
+    // find the minimum amount of chunks needed to contain the counter
+    localparam CHUNK_COUNT = WIDTH % ALU_WIDTH == 0 ? WIDTH / ALU_WIDTH : WIDTH / ALU_WIDTH + 1; 
+    // find the size of the last chunk needed to contain the counter.
+    localparam LAST_CHUNK_SIZE = WIDTH % ALU_WIDTH == 0 ? ALU_WIDTH : WIDTH % ALU_WIDTH;
+    // find values for gates
+    localparam GATE_LUT_WIDTH        = f_NaryRecursionGetUnitWidthForLatency( CHUNK_COUNT, LATENCY );// use the maximum 'latency' to find the operator unit input width
+    localparam GATE_CARRYCHAIN_WIDTH = f_NaryRecursionGetVectorSize( CHUNK_COUNT, GATE_LUT_WIDTH );// use the operator input width to find how many units are needed
+    // find values for cmp
+    localparam CMP_LUT_WIDTH        = f_TailRecursionGetUnitWidthForLatency(CHUNK_COUNT, LATENCY > 1 ? LATENCY : 1); // use the maximum 'latency' to find the comparators unit width
+    localparam CMP_CARRYCHAIN_WIDTH = f_TailRecursionGetVectorSize(CHUNK_COUNT, CMP_LUT_WIDTH); // use the comparators width to find how many units are needed
+    // ----- end of copy
+//    localparam ALU_RESULT_VECTOR_SIZE = 
+    
+
+endmodule
 
 module math_lfmr // linear feedback math register, 1 input, get answer LATENCY clocks later.
     #(

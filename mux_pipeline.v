@@ -67,19 +67,18 @@ module mux_pipeline #(
     wire    [SELECT_SIZE-1:0]                   w_sel;        // wires to pass to combinational .sel()
     
     pipeline_vector #( .WIDTH(SEL_WIDTH), .SIZE(STRUCTURE_DEPTH), .PRINT(PRINT) )
-        sel_pipeline( .in({r_sel_pipe, sel}), .out_shift_right(w_sel_pipe), .sel_right(w_sel));
+        mux_sel_pipeline( .in({r_sel_pipe, sel}), .out_shift_right(w_sel_pipe), .sel_right(w_sel));
     always @( posedge clk ) r_sel_pipe <= w_sel_pipe;
 
     if(PRINT!=0)initial $display("mux_pipeline - SELECT_SIZE:%1d MUX_SIZE:%1d SEL_WIDTH:%1d STRUCTURE_SIZE:%1d STRUCTURE_DEPTH:%1d PIPELINE_R_SIZE:%1d",
         SELECT_SIZE, MUX_SIZE, SEL_WIDTH, STRUCTURE_SIZE, STRUCTURE_DEPTH, PIPELINE_R_SIZE );
     generate
-        genvar idx;
-            if( LATENCY <= STRUCTURE_DEPTH ) begin
-                assign out = w_out;
-            end else begin
-                synchronizer #(.WIDTH(WIDTH), .DEPTH_INPUT( LATENCY - STRUCTURE_DEPTH ), .DEPTH_OUTPUT(0) )
-                    latency_correction( .clk_in(clk), .in(w_out), .clk_out(), .out(out) );
-            end
+        if( LATENCY <= STRUCTURE_DEPTH ) begin
+            assign out = w_out;
+        end else begin
+            synchronizer #(.WIDTH(WIDTH), .DEPTH_INPUT( LATENCY - STRUCTURE_DEPTH ), .DEPTH_OUTPUT(0) )
+                mux_latency_correction( .clk_in(clk), .in(w_out), .clk_out(), .out(out) );
+        end
     endgenerate
 
     mux_lfmr #(.WIDTH(WIDTH), .INPUT_COUNT(INPUT_COUNT), .LATENCY(LATENCY), .TYPE(0), .PRINT(PRINT) )
