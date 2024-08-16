@@ -28,6 +28,9 @@ Building blocks for a fast pipelined multiplexer with configurable width and ret
 * mux_lfmr - linear feedback mux module. Wrapper module, managing the pipelining of a multicycle multiplexer. <sub>[verified](verification/mux_lfmr.sby)</sub>
 * mux_combinational - Purely combinational mux module, with automatic data structure and mux chain construction.
 
+## [pipeline_vector.v](pipeline_vector.v)
+A module that fragments and organizes a vector for use in a pipeline. Structure diagrams included. 
+
 ## [recursion_iterators.vh](recursion_iterators.vh)
 Functions used for building pipeline and retiming data structures. Structure diagrams included.
 * Tail Recursion - useful for running a magnitude comparison while data is in the pipeline.
