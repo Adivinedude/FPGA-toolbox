@@ -78,8 +78,30 @@ module math_pipeline
     localparam CMP_LUT_WIDTH        = f_TailRecursionGetUnitWidthForLatency(CHUNK_COUNT, LATENCY > 1 ? LATENCY : 1); // use the maximum 'latency' to find the comparators unit width
     localparam CMP_CARRYCHAIN_WIDTH = f_TailRecursionGetVectorSize(CHUNK_COUNT, CMP_LUT_WIDTH); // use the comparators width to find how many units are needed
     // ----- end of copy
-//    localparam ALU_RESULT_VECTOR_SIZE = 
-    
+
+    // Notes: input pipelining in required for the following operations
+    // Arithmetic - sum, sub, mul, div, mol
+    // total input sampling is performed for all gate_* and cmp* operations.
+    // I don't like the way the cmp_* operators are implemented. They work independently from the arithmetic operation.
+    // thanking of a different way to do this. please standby ...
+
+    //Pipeline I1
+    localparam I_PIPE_SIZE = f_GetPipelineVectorSize( CHUNK_COUNT-1, ALU_WIDTH);
+    reg     [I_PIPE_SIZE-1:0]   r_I1_pipe, r_I2_pipe, r_I3_pipe;
+    wire    [I_PIPE_SIZE-1:0]   w_I1_pipe, w_I2_pipe, w_I3_pipe;
+    wire    [WIDTH-1:0]         w_I1, w_I2, w_I3;
+
+    pipeline_vector #( .SIZE( CHUNK_COUNT), .WIDTH(ALU_WIDTH), .PRINT(PRINT) )
+        I1_pipe( .in({r_I1_pipe, I1}), .out_shift_right(w_I1_pipe), .sel_right(w_I1) );
+    always @( posedge clk ) r_I1_pipe <= w_I1_pipe;
+
+    pipeline_vector #( .SIZE( CHUNK_COUNT), .WIDTH(ALU_WIDTH), .PRINT(PRINT) )
+        I2_pipe( .in({r_I2_pipe, I2}), .out_shift_right(w_I2_pipe), .sel_right(w_I2) );
+    always @( posedge clk ) r_I2_pipe <= w_I2_pipe;
+
+    pipeline_vector #( .SIZE( CHUNK_COUNT), .WIDTH(ALU_WIDTH), .PRINT(PRINT) )
+        I3_pipe( .in({r_I3_pipe, I3}), .out_shift_right(w_I3_pipe), .sel_right(w_I3) );
+    always @( posedge clk ) r_I3_pipe <= w_I3_pipe;
 
 endmodule
 
