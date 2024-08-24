@@ -44,7 +44,7 @@ function automatic integer f_GetPipelineVectorSize;
     input integer base, unit_width;
     f_GetPipelineVectorSize = (base * ( base + 1 ) / 2) * unit_width;
 endfunction
-// initial begin:test_SumOfSubtrahend integer idx;for(idx=0;idx<5;idx=idx+1)begin $display("f_GetPipelineVectorSize(%1d):%1d",idx,f_GetPipelineVectorSize(idx, 1));end end
+// initial begin:test_GetPipelineVectorSize integer idx,idy;for(idy=1;idy<4;idy=idy+1)begin for(idx=0;idx<5;idx=idx+1)begin $display("f_GetPipelineVectorSize(%1d, %1d):%1d",idx,idy,f_GetPipelineVectorSize(idx, idy));end end end
 
 // returns the start address of a level of a continually reducing vector
 // level 0: <2> <1> <0>
@@ -65,7 +65,7 @@ function automatic integer f_GetPipelineDepthStartAddress;
         end
     end
 endfunction
-// initial begin:test_GetPipeLineDepthStartAddress integer idx;for(idx=0;idx<5;idx=idx+1)begin $display("f_GetPipelineDepthStartAddress( 3, 1, %1d ):%1d",idx,f_GetPipelineDepthStartAddress(3,1, idx));end end
+// initial begin:test_GetPipeLineDepthStartAddress integer idx,idy,idz;for(idx=3;idx<6;idx=idx+1)begin for(idy=1;idy<4;idy=idy+1)begin for(idz=0;idz<=idx;idz=idz+1)begin $display("f_GetPipelineDepthStartAddress( %1d, %1d, %1d ):%1d",idx, idy, idz,f_GetPipelineDepthStartAddress(idx, idy, idz));end end end end
 
 // returns the end address of a level of a continually reducing vector
 // level 0: <2> <1> <0>
@@ -82,11 +82,11 @@ function automatic integer f_GetPipelineDepthEndAddress;
         if( request_depth >= base) begin
             f_GetPipelineDepthEndAddress = ~0;
         end else begin
-            f_GetPipelineDepthEndAddress = f_GetPipelineDepthStartAddress(base, 1, request_depth) + (base - request_depth - 1) * unit_width;
+            f_GetPipelineDepthEndAddress = f_GetPipelineDepthStartAddress(base, unit_width, request_depth) + ( (base-request_depth) * unit_width) - 1;
         end
     end
 endfunction
-// initial begin:test_GetPipelineDepthEndAddress integer idx;for(idx=0;idx<5;idx=idx+1)begin $display("f_GetPipelineDepthEndAddress( 3, 1, %1d ):%1d",idx,f_GetPipelineDepthEndAddress(3,1, idx));end end
+// initial begin:test_GetPipelineDepthEndAddress integer idx,idy,idz;for(idx=3;idx<6;idx=idx+1)begin for(idy=1;idy<4;idy=idy+1)begin for(idz=0;idz<=idx;idz=idz+1)begin $display("f_GetPipelineDepthEndAddress( %1d, %1d, %1d ):%1d",idx, idy, idz,f_GetPipelineDepthEndAddress(idx ,idy, idz));end end end end
 
 // returns the size of a level of a continually reducing vector
 function automatic integer f_GetPipelineDepthSize;
@@ -95,11 +95,11 @@ function automatic integer f_GetPipelineDepthSize;
         if( request_depth >= base) begin
             f_GetPipelineDepthSize = ~0;
         end else begin
-            f_GetPipelineDepthSize = f_GetPipelineDepthEndAddress(base, unit_width, request_depth) - f_GetPipelineDepthStartAddress(base, unit_width, request_depth) + unit_width;
+            f_GetPipelineDepthSize = f_GetPipelineDepthEndAddress(base, unit_width, request_depth) - f_GetPipelineDepthStartAddress(base, unit_width, request_depth) + 1;
         end
     end
 endfunction
-// initial begin:test_GetPipelineDepthSize integer idx;for(idx=0;idx<5;idx=idx+1)begin $display("f_GetPipelineDepthSize( 3, 1, %1d ):%1d",idx,f_GetPipelineDepthSize(3,1, idx));end end
+// initial begin:test_GetPipelineDepthSize integer idx,idy,idz;for(idx=3;idx<6;idx=idx+1)begin for(idy=1;idy<4;idy=idy+1)begin for(idz=0;idz<=idx;idz=idz+1)begin $display("f_GetPipelineDepthSize( %1d, %1d, %1d ):%1d",idx,idy,idz,f_GetPipelineDepthSize(idx,idy,idz));end end end end
 
 function automatic integer f_GetPipelineDepth;
     input integer input_count;

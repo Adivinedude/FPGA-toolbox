@@ -98,14 +98,14 @@ module pipeline_vector #(
         end
         // sel_left
         for( idx = 0; idx < SIZE; idx = idx + 1 )begin
-            if(PRINT!=0)initial $display( "pipeline_vector - idx:%1d sel_left[%1d+:%1d] = in[%1d+:%1d]", 
+            if(PRINT!=0)initial $display( "pipeline_vector - idx:%1d sel_left[%1d+:%1d] = in[%1d-:%1d]", 
                 idx,
                 idx*WIDTH,
                 WIDTH,
                 f_GetPipelineDepthEndAddress(SIZE, WIDTH, idx),
                 WIDTH
             );
-            assign sel_left[ idx*WIDTH+:WIDTH ] = in[f_GetPipelineDepthEndAddress(SIZE, WIDTH, idx) +: WIDTH];
+            assign sel_left[ idx*WIDTH+:WIDTH ] = in[f_GetPipelineDepthEndAddress(SIZE, WIDTH, idx) -: WIDTH];
         end
         // sel_right
         for( idx = 0; idx < SIZE; idx = idx + 1 )begin

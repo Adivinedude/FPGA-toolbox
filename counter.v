@@ -45,23 +45,25 @@ module counter_with_strobe
     reg     [WIDTH-1:0] counter_ff  = 'd1;
     wire    [WIDTH-1:0] w_counter_ff;
     wire                trigger;
-    math_lfmr #(.WIDTH(WIDTH), .LATENCY(LATENCY > 0 ? LATENCY - 1 : 0) ) counter_plus_plus  
+    math_pipeline #(.WIDTH(WIDTH), .LATENCY(LATENCY > 0 ? LATENCY - 1 : 0) ) counter_plus_plus  
     (
         .clk(   clk ),
         .rst(   (trigger && enable) || rst ),
+        .ce(    1'b1 ),
         .I1(    counter_ff ),
         .I2(    { {WIDTH-1{1'b0}}, enable } ),
         .I3(    reset_value ),
         .sum(   w_counter_ff ),
+        .cmp_sum_eq( trigger ), .cmp_sum_neq(),
         .sub(), .gate_and(), .gate_or(), .gate_xor(),
-        .cmp_eq( trigger ), .cmp_neq()
+        .cmp_eq(), .cmp_neq()
     );   
     always @( posedge clk ) begin
         if( rst )
             counter_ff <= 'd1;
         else begin
-            counter_ff <= w_counter_ff;
             if( enable ) begin
+                // counter_ff <= w_counter_ff;
                 if( trigger )
                     counter_ff <= 'd1;
             end
