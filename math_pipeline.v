@@ -101,7 +101,7 @@ module math_pipeline
     reg     [I_PIPE_SIZE-1:0]   r_I1_pipe, r_I2_pipe, r_I3_pipe, r_sum_pipe, r_sub_pipe;
     wire    [I_PIPE_SIZE-1:0]   w_I1_pipe, w_I2_pipe, w_I3_pipe, w_sum_pipe, w_sub_pipe;
     wire    [WIDTH-1:0]         w_I1, w_I2, w_I3, w_sum, w_sub;
-    wire                        w_gate_and, w_gate_or, w_gate_xor, w_cmp_eq, w_cmp_neq;
+    wire                        w_gate_and, w_gate_or, w_gate_xor, w_cmp_eq, w_cmp_neq, w_cmp_sum_eq, w_cmp_sum_neq;
 
 // Input pipelined vectors
     pipeline_vector #( .SIZE( CHUNK_COUNT ), .WIDTH( ALU_WIDTH ), .PRINT( PRINT ) )
@@ -115,39 +115,43 @@ module math_pipeline
 
 // Output pipelined vectors
     pipeline_vector #( .SIZE( CHUNK_COUNT ), .WIDTH( ALU_WIDTH ), .PRINT( 0 ) )
-        SUM_pipe( .in({r_sum_pipe, w_sum}), .out_shift_left(w_sum_pipe), .sel_left(sum) );
+        SUM_pipe( .in({r_sum_pipe, w_sum}), .out_shift_right(w_sum_pipe), .sel_right(sum) );
 
     pipeline_vector #( .SIZE( CHUNK_COUNT ), .WIDTH( ALU_WIDTH ), .PRINT( 0 ) )
-        SUB_pipe( .in({r_sub_pipe, w_sub}), .out_shift_left(w_sub_pipe), .sel_left(sub) );
+        SUB_pipe( .in({r_sub_pipe, w_sub}), .out_shift_right(w_sub_pipe), .sel_right(sub) );
 
     always @( posedge clk ) begin
         if( rst ) begin
             r_I1_pipe  <= 0;
             r_I2_pipe  <= 0;
+            r_I3_pipe  <= 0;
             r_sum_pipe <= 0;
             r_sub_pipe <= 0;
         end else if( ce ) begin
             r_I1_pipe  <= w_I1_pipe;
             r_I2_pipe  <= w_I2_pipe;
+            r_I3_pipe  <= w_I3_pipe;
             r_sum_pipe <= w_sum_pipe;
             r_sub_pipe <= w_sub_pipe;
         end
     end
     math_lfmr #(.WIDTH( WIDTH ), .LATENCY( LATENCY ) )
         ALU_CARRY_CHAIN_PIPE (
-            .clk(       clk ),
-            .rst(       rst ),
-            .ce(        ce ),
-            .I1(        w_I1 ),
-            .I2(        w_I2 ),
-            .I3(        I3 ),
-            .sum(       w_sum ),
-            .sub(       w_sub ),
-            .gate_and(  w_gate_and ),
-            .gate_or(   w_gate_or ),
-            .gate_xor(  w_gate_xor ),
-            .cmp_eq(    w_cmp_eq ),
-            .cmp_neq(   w_cmp_neq )
+            .clk(           clk ),
+            .rst(           rst ),
+            .ce(            ce ),
+            .I1(            w_I1 ),
+            .I2(            w_I2 ),
+            .I3(            I3 ),
+            .sum(           w_sum ),
+            .cmp_sum_eq(    w_cmp_sum_eq),
+            .cmp_sum_neq(   w_cmp_sum_neq),
+            .sub(           w_sub ),
+            .gate_and(      w_gate_and ),
+            .gate_or(       w_gate_or ),
+            .gate_xor(      w_gate_xor ),
+            .cmp_eq(        w_cmp_eq ),
+            .cmp_neq(       w_cmp_neq )
         );
     // sync up the output of the gate_* and cmp_* functions with the arithmetic output
     localparam GATE_DELAY = (LATENCY - f_NaryRecursionGetDepth(WIDTH, GATE_LUT_WIDTH)) * 3;
@@ -168,6 +172,8 @@ module math_pipeline
     assign gate_xor = r_gate_delay[GATE_DELAY-2];
     assign cmp_eq   = r_cmp_delay[CMP_DELAY];
     assign cmp_neq  = r_cmp_delay[CMP_DELAY-1];
+    assign cmp_sum_eq = w_cmp_sum_eq;
+    assign cmp_sum_neq = w_cmp_sum_neq;
 endmodule
 
 module math_lfmr // linear feedback math register, 1 input, get answer LATENCY clocks later.

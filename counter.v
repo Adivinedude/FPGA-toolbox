@@ -42,16 +42,16 @@ module counter_with_strobe
     );
 
     reg                 strobe_ff   = 0;
-    reg     [WIDTH-1:0] counter_ff  = 'd1;
+    reg     [WIDTH-1:0] counter_ff  = 'd0;
     wire    [WIDTH-1:0] w_counter_ff;
     wire                trigger;
     math_pipeline #(.WIDTH(WIDTH), .LATENCY(LATENCY > 0 ? LATENCY - 1 : 0) ) counter_plus_plus  
     (
         .clk(   clk ),
-        .rst(   (trigger && enable) || rst ),
+        .rst(   /*(trigger && enable) ||*/ rst ),
         .ce(    1'b1 ),
         .I1(    counter_ff ),
-        .I2(    { {WIDTH-1{1'b0}}, enable } ),
+        .I2(    { {WIDTH-1{1'b0}}, 1'b1 } ),
         .I3(    reset_value ),
         .sum(   w_counter_ff ),
         .cmp_sum_eq( trigger ), .cmp_sum_neq(),
@@ -60,12 +60,12 @@ module counter_with_strobe
     );   
     always @( posedge clk ) begin
         if( rst )
-            counter_ff <= 'd1;
+            counter_ff <= 'd0;
         else begin
             if( enable ) begin
-                // counter_ff <= w_counter_ff;
+                counter_ff <= w_counter_ff;
                 if( trigger )
-                    counter_ff <= 'd1;
+                    counter_ff <= 'd0;
             end
         end
     end
