@@ -431,6 +431,7 @@ function automatic integer iterator_NaryRecursionGetDepth;
     //             ,rt + 1);
     begin
         for( iterator_NaryRecursionGetDepth = 0; base != 1; iterator_NaryRecursionGetDepth = iterator_NaryRecursionGetDepth + 1 ) begin
+            $display("iterator_NaryRecursionGetDepth(%1d, %1d)", base, lut_width);
             base = (base / lut_width * lut_width == base) ? base / lut_width : base / lut_width + 1;
         end 
     end

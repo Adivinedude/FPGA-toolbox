@@ -58,6 +58,7 @@ module counter_with_strobe
         .sub(), .gate_and(), .gate_or(), .gate_xor(),
         .cmp_eq(), .cmp_neq()
     );   
+
     always @( posedge clk ) begin
         if( rst )
             counter_ff <= 'd0;
@@ -184,8 +185,8 @@ module counter_with_strobe
 // // // // // // // // // // /
 // counter_ff & tick_counter  /
 // // // // // // // // // // /
-    always @( posedge clk )
-        assume(strobe || counter_ff == tick_counter + 1 );      
+    // always @( posedge clk )
+    //     assume(strobe || counter_ff == tick_counter + 1 );      
 
 // induction testing
 // using a 8 bit counter, need a test depth > 255 with enable forced high, 510 with enable toggling

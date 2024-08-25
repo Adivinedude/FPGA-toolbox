@@ -76,6 +76,7 @@ module math_pipeline
     // find the size of the last chunk needed to contain the counter.
     localparam LAST_CHUNK_SIZE = WIDTH % ALU_WIDTH == 0 ? ALU_WIDTH : WIDTH % ALU_WIDTH;
     // find values for gates
+    initial $display("CHUNK_COUNT: %1d LATENCY: %1d", CHUNK_COUNT, LATENCY);
     localparam GATE_LUT_WIDTH        = f_NaryRecursionGetUnitWidthForLatency( CHUNK_COUNT, LATENCY );// use the maximum 'latency' to find the operator unit input width
     localparam GATE_CARRYCHAIN_WIDTH = f_NaryRecursionGetVectorSize( CHUNK_COUNT, GATE_LUT_WIDTH );// use the operator input width to find how many units are needed
     // find values for cmp
@@ -135,7 +136,7 @@ module math_pipeline
             r_sub_pipe <= w_sub_pipe;
         end
     end
-    math_lfmr #(.WIDTH( WIDTH ), .LATENCY( LATENCY ) )
+    math_lfmr #(.WIDTH( WIDTH ), .LATENCY( LATENCY ), .PRINT( PRINT ) )
         ALU_CARRY_CHAIN_PIPE (
             .clk(           clk ),
             .rst(           rst ),
@@ -154,8 +155,11 @@ module math_pipeline
             .cmp_neq(       w_cmp_neq )
         );
     // sync up the output of the gate_* and cmp_* functions with the arithmetic output
-    localparam GATE_DELAY = (LATENCY - f_NaryRecursionGetDepth(WIDTH, GATE_LUT_WIDTH)) * 3;
-    localparam CMP_DELAY  = (LATENCY - f_NaryRecursionGetDepth(WIDTH, CMP_LUT_WIDTH )) * 2;
+    // localparam GATE_DELAY = (LATENCY - f_NaryRecursionGetDepth(WIDTH, GATE_LUT_WIDTH)) * 3;
+    // localparam CMP_DELAY  = (LATENCY - f_NaryRecursionGetDepth(WIDTH, CMP_LUT_WIDTH )) * 2;
+    localparam GATE_DELAY = 5;
+    localparam CMP_DELAY = 5;
+    initial $display( "WIDTH: %1d GATE_LUT_WIDTH: %1d CMP_LUT_WIDTH %1d", WIDTH, GATE_LUT_WIDTH, CMP_LUT_WIDTH);
     reg     [GATE_DELAY:0]   r_gate_delay = 0;
     reg     [CMP_DELAY :0]   r_cmp_delay  = 0;
     always @( posedge clk ) begin
@@ -179,7 +183,8 @@ endmodule
 module math_lfmr // linear feedback math register, 1 input, get answer LATENCY clocks later.
     #(
         parameter WIDTH     = 4,
-        parameter LATENCY   = 4
+        parameter LATENCY   = 4,
+        parameter PRINT     = 0
     )
     (
         input   wire                clk,
@@ -298,7 +303,7 @@ module math_lfmr // linear feedback math register, 1 input, get answer LATENCY c
         end
     end
 
-    math_combinational #(.WIDTH(WIDTH), .LATENCY(LATENCY) ) ALU_LOGIC
+    math_combinational #(.WIDTH(WIDTH), .LATENCY(LATENCY), .PRINT(PRINT) ) ALU_LOGIC
     (
         .clk(clk),
         .I1(I1),
@@ -336,7 +341,8 @@ endmodule
 module math_combinational
     #(
         parameter WIDTH     = 4,
-        parameter LATENCY   = 4
+        parameter LATENCY   = 4,
+        parameter PRINT     = 0
     )
     (   clk, I1, I2, I3,
         sum, sum_carry_in, sum_carry_out, cmp_sum_eq, cmp_sum_neq, sum_eq_carry_in, sum_eq_carry_out,
@@ -375,18 +381,20 @@ module math_combinational
     localparam CHUNK_COUNT = WIDTH % ALU_WIDTH == 0 ? WIDTH / ALU_WIDTH : WIDTH / ALU_WIDTH + 1; 
     // find the size of the last chunk needed to contain the counter.
     localparam LAST_CHUNK_SIZE = WIDTH % ALU_WIDTH == 0 ? ALU_WIDTH : WIDTH % ALU_WIDTH;
-    // initial $display("WIDTH:%d\tLATENCY:%d\tALU_WIDTH:%d\tCHUNK_COUNT:%d\tLAST_CHUNK_SIZE:%d", WIDTH, LATENCY, ALU_WIDTH, CHUNK_COUNT, LAST_CHUNK_SIZE);
     // find values for gates
     localparam GATE_LUT_WIDTH   = f_NaryRecursionGetUnitWidthForLatency( CHUNK_COUNT, LATENCY );// use the maximum 'latency' to find the operator unit input width
     localparam GATE_CARRYCHAIN_WIDTH = f_NaryRecursionGetVectorSize( CHUNK_COUNT, GATE_LUT_WIDTH );// use the operator input width to find how many units are needed
-    // initial $display("GATE_LUT_WIDTH:%d\tGATE_CARRYCHAIN_WIDTH:%d", GATE_LUT_WIDTH, GATE_CARRYCHAIN_WIDTH);
 
     // find values for cmp
     localparam CMP_LUT_WIDTH        = f_TailRecursionGetUnitWidthForLatency(CHUNK_COUNT, LATENCY > 1 ? LATENCY - 1 : 1); // use the maximum 'latency' to find the comparators unit width
     localparam CMP_CARRYCHAIN_WIDTH     = f_TailRecursionGetVectorSize(CHUNK_COUNT, CMP_LUT_WIDTH); // use the comparators width to find how many units are needed
     localparam CMP_LAST_LUT_WIDTH   = f_TailRecursionGetLastUnitWidth(CHUNK_COUNT, CMP_LUT_WIDTH); // find the width of the last unit.
-    // initial $display("CMP_LUT_WIDTH:%d\tCMP_CARRYCHAIN_WIDTH:%d\tCMP_LAST_LUT_WIDTH:%d", CMP_LUT_WIDTH, CMP_CARRYCHAIN_WIDTH, CMP_LAST_LUT_WIDTH);
 
+    if(PRINT!=0) begin 
+        initial 
+        $display("math_combinational - WIDTH:%1d LATENCY:%1d DENOMINATOR:%1d ALU_WIDTH:%1d CHUNK_COUNT:%1d LAST_CHUNK_SIZE:%1d GATE_LUT_WIDTH:%1d GATE_CARRYCHAIN_WIDTH:%1d CMP_LUT_WIDTH:%1d CMP_CARRYCHAIN_WIDTH:%1d CMP_LAST_LUT_WIDTH:%1d", 
+        WIDTH, LATENCY, DENOMINATOR, ALU_WIDTH, CHUNK_COUNT, LAST_CHUNK_SIZE, GATE_LUT_WIDTH, GATE_CARRYCHAIN_WIDTH, CMP_LUT_WIDTH, CMP_CARRYCHAIN_WIDTH, CMP_LAST_LUT_WIDTH);
+    end
 
     genvar idx;
     genvar unit_index;
@@ -483,8 +491,8 @@ module math_combinational
 
 //gate_xor
     output  wire                                            gate_xor;
-    input   wire    [CHUNK_COUNT+GATE_CARRYCHAIN_WIDTH-1:0]  gate_xor_carry_in;
-    output  wire    [CHUNK_COUNT+GATE_CARRYCHAIN_WIDTH-1:0]  gate_xor_carry_out;
+    input   wire    [CHUNK_COUNT+GATE_CARRYCHAIN_WIDTH-1:0] gate_xor_carry_in;
+    output  wire    [CHUNK_COUNT+GATE_CARRYCHAIN_WIDTH-1:0] gate_xor_carry_out;
     `define OPERATION ^
     if( LATENCY == 0 )
         assign gate_xor = gate_xor_carry_out[CHUNK_COUNT+GATE_CARRYCHAIN_WIDTH-1];
@@ -550,7 +558,7 @@ module math_combinational
             wire [f_input_size(unit_index):0] unit_inputs;
             // assign the inputs to their proper place
             for( input_index = f_input_size(unit_index); input_index != ~0; input_index = input_index-1 ) begin : CMP_EQ_input_loop
-                // initial $display("unit_index: %d input_index:%d func:%d", unit_index, input_index, f_TailRecursionGetUnitInputAddress(CHUNK_COUNT, CMP_LUT_WIDTH, unit_index, input_index));
+                if(PRINT!=0)begin initial $display("cmp_eq - unit_index: %1d input_index:%1d func:%1d", unit_index, input_index, f_TailRecursionGetUnitInputAddress(CHUNK_COUNT, CMP_LUT_WIDTH, unit_index, input_index));end
                 assign unit_inputs[input_index] = 
                     cmp_eq_carry_in[f_TailRecursionGetUnitInputAddress(CHUNK_COUNT, CMP_LUT_WIDTH, unit_index, input_index)];
             end

@@ -1,1 +1,1 @@
-sby -f --prefix temp\counter verification\counter.sby %*
+sby -f --sequential -E -j 1 --prefix temp\counter verification\counter.sby %*
